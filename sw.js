@@ -1,5 +1,5 @@
 // Offline support. Bump VERSION when shipping changes to the app shell.
-const VERSION = 'ic-v2';
+const VERSION = 'ic-v3';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
 
 self.addEventListener('install', e => {
