@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' data:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#07051a">
 <meta name="description" content="A free rapid-imaging practice tool inspired by William Bengston’s Image Cycling® technique. Works offline; your images never leave your device.">
@@ -996,8 +997,20 @@
         const v = data.settings && data.settings[k];
         if (typeof v === typeof DEFAULTS[k]) settings[k] = v;
       }
-      if (data.stats && typeof data.stats.total === 'number') { Object.assign(stats, data.stats); ls.set('ic-stats', stats); renderStats(); }
-      if (data.trained && typeof data.trained === 'object') { trained = data.trained; ls.set('ic-trained', trained); }
+      // A backup file is outside data: copy over only the fields we expect, with the right types.
+      const st = data.stats || {}, tr = data.trained || {};
+      if (Number.isFinite(st.total)) {
+        Object.assign(stats, {
+          total: Math.max(0, Math.floor(st.total)),
+          streak: Number.isFinite(st.streak) ? Math.max(0, Math.floor(st.streak)) : 0,
+          last: /^\d{4}-\d{2}-\d{2}$/.test(st.last) ? st.last : null
+        });
+        ls.set('ic-stats', stats); renderStats();
+      }
+      trained = {};
+      for (const L of LEVELS) if (tr[L.id] === true) trained[L.id] = true;
+      if (Number.isFinite(tr.quiz)) trained.quiz = Math.max(0, Math.min(10, Math.floor(tr.quiz)));
+      ls.set('ic-trained', trained);
       bindSettings(); setMode(settings.mode);
     }
     const added = [];
@@ -1142,6 +1155,7 @@
       run: () => ({ free: true }) }
   ];
 
+  const bestQuiz = () => Math.max(0, Math.min(10, Math.floor(+trained.quiz) || 0));
   function renderLevels() {
     const box = $('levels');
     box.innerHTML = '';
@@ -1168,7 +1182,7 @@
     const q = document.createElement('div');
     q.className = 'level' + (trained.quiz ? ' done' : '');
     q.innerHTML = `<div class="badge">${trained.quiz ? '✓' : '?'}</div>
-      <div><h3>Memory quiz</h3><p>Test yourself: which image comes before or after? Best score: <b>${trained.quiz || 0}/10</b></p></div>`;
+      <div><h3>Memory quiz</h3><p>Test yourself: which image comes before or after? Best score: <b>${bestQuiz()}/10</b></p></div>`;
     const qb = document.createElement('button');
     qb.textContent = 'Take quiz'; qb.disabled = n < 4;
     qb.onclick = startQuiz;
