@@ -38,6 +38,7 @@
     --display: "Fraunces", Georgia, serif;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body { margin: 0; }
   body {
     background: var(--bg);
@@ -996,13 +997,29 @@
       ? 'Your list is stored only on this device. Back it up now and then so you never lose it.'
       : 'Your list is stored only in this browser, which may clear it if space runs low or, on iPhone, after a week without use. Back it up, or add this app to your home screen to keep it safe.';
   }
+  // Chrome, Edge and Android offer a one-tap install prompt. Safari (iPhone, iPad, Mac) doesn't,
+  // so there the button explains how to add the app by hand.
   let installEvt = null;
-  addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; $('installBtn').hidden = false; });
+  const ua = navigator.userAgent;
+  const isIOS = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  const isMacSafari = !isIOS && /Macintosh/.test(ua) && /Safari/.test(ua) && !/Chrome|Chromium|Edg|Firefox/.test(ua);
+  $('installBtn').hidden = standalone();
+  addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; });
   $('installBtn').onclick = async () => {
-    if (!installEvt) return;
-    installEvt.prompt();
-    try { await installEvt.userChoice; } catch {}
-    installEvt = null; $('installBtn').hidden = true;
+    if (installEvt) {
+      const e = installEvt; installEvt = null; // a prompt can only be shown once
+      try {
+        await e.prompt();
+        if ((await e.userChoice).outcome === 'accepted') $('installBtn').hidden = true;
+        return;
+      } catch {}
+    }
+    const steps = isIOS
+      ? 'Tap the Share button (the square with an arrow pointing up), then scroll down and choose “Add to Home Screen”. In Safari it’s at the bottom of the screen; in Chrome it’s next to the address bar.'
+      : isMacSafari
+        ? 'In the menu bar, choose File → Add to Dock.'
+        : 'Open your browser’s menu (⋮ or ⋯) and choose “Install app” or “Add to Home screen”. If you don’t see either, your browser can’t install apps; Chrome, Edge and Safari can.';
+    ask('Install the app', steps, [['', 'OK', true]]);
   };
   addEventListener('appinstalled', () => { $('installBtn').hidden = true; keepStorage(); });
 
