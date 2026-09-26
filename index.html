@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#07051a">
+<meta name="description" content="Rapid image cycling for your goals, based on the Bengston method. Works offline; your images never leave your device.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Image Cycling">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Image Cycling</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -300,6 +308,64 @@
   #quiz .opt.wrong { border-color: var(--bad); box-shadow: 0 0 24px rgba(251, 113, 133, 0.6); }
   #quiz .opt .tile { width: 100%; height: 100%; border-radius: 0; box-shadow: none; }
   #quiz .xbtn { position: absolute; top: 16px; right: 16px; width: 40px; height: 40px; padding: 0; justify-content: center; }
+
+  /* List editing */
+  .grid .tile { cursor: pointer; }
+  .tile:focus-visible, button:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  .tile .cap {
+    position: absolute; left: 0; right: 0; bottom: 0; padding: 20px 8px 24px; font-size: 0.72rem; line-height: 1.25;
+    background: linear-gradient(transparent, rgba(0, 0, 0, 0.75)); overflow: hidden;
+    display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical;
+  }
+  .tile .grip {
+    position: absolute; top: 5px; left: 5px; width: 26px; height: 26px; padding: 0;
+    justify-content: center; border-radius: 50%; background: rgba(0,0,0,0.55);
+    color: #fff; border: none; font-size: 15px; opacity: 0; transition: opacity .15s;
+    cursor: grab; touch-action: none;
+  }
+  .tile .grip:hover { transform: none; background: var(--violet); }
+  .tile:hover .grip, .tile:focus-within .grip { opacity: 1; }
+  @media (hover: none) { .tile .grip { opacity: 1; } }
+  .grid.sorting .tile { transition: none; }
+  .tile.dragging { opacity: 0.75; transform: scale(1.06); z-index: 2; box-shadow: 0 0 0 3px var(--accent), 0 16px 40px rgba(139, 92, 246, 0.55); }
+  .foot { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+  .foot .count { margin: 0; }
+  .small { padding: 7px 14px; font-size: 0.85rem; }
+  .tip { font-size: 0.82rem; color: var(--muted); margin: 12px 0 0; }
+  .warn.hot { color: var(--gold); }
+  .danger { color: var(--bad); }
+  .level.next { border-color: rgba(251, 191, 119, 0.55); box-shadow: 0 0 22px rgba(251, 191, 119, 0.12); }
+  .level .tag {
+    display: inline-block; margin-left: 8px; padding: 1px 8px; border-radius: 999px; vertical-align: 2px;
+    font-size: 0.7rem; font-weight: 600; color: #3b2300; background: linear-gradient(135deg, #fde68a, #f59e0b);
+  }
+
+  /* Dialogs + toast */
+  dialog {
+    background: #140f2e; color: var(--text); border: 1px solid var(--border); border-radius: 24px;
+    padding: 24px; width: min(440px, calc(100vw - 32px)); box-shadow: 0 30px 80px rgba(0, 0, 0, 0.6);
+  }
+  dialog::backdrop { background: rgba(4, 2, 16, 0.72); backdrop-filter: blur(4px); }
+  dialog p { color: var(--muted); margin: 0 0 18px; }
+  dialog input[type="text"] { width: 100%; }
+  dialog .row.end { justify-content: flex-end; margin-top: 18px; }
+  .edprev { width: 150px; aspect-ratio: 1; margin: 0 auto 18px; }
+  .edprev .tile { width: 100%; height: 100%; }
+  .edmove { justify-content: space-between; margin: 4px 0 14px; }
+  .edmove span { color: var(--muted); font-size: 0.9rem; }
+  #toast {
+    position: fixed; left: 50%; bottom: calc(20px + env(safe-area-inset-bottom)); z-index: 20;
+    transform: translate(-50%, 20px); opacity: 0; pointer-events: none; transition: opacity .25s, transform .25s;
+    display: flex; gap: 12px; align-items: center; max-width: calc(100vw - 32px);
+    background: #1d1640; border: 1px solid var(--border); border-radius: 999px; padding: 10px 12px 10px 20px;
+    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+  }
+  #toast.on { opacity: 1; transform: translate(-50%, 0); pointer-events: auto; }
+  #toast button { padding: 6px 14px; }
+  #stage .label {
+    position: absolute; bottom: 64px; left: 16px; right: 16px; text-align: center; color: #fff;
+    font-family: var(--display); font-size: clamp(1.2rem, 4vw, 2rem); font-weight: 600; text-shadow: 0 2px 14px #000;
+  }
 </style>
 
 </head>
@@ -322,25 +388,34 @@
 
   <section class="card">
     <h2>Your list</h2>
-    <p class="sub" style="margin-top:-6px">Add one image for each thing you want. Aim for at least 20. Training uses them in this order.</p>
+    <p class="sub" style="margin-top:-6px">Add one image for each thing you want. Aim for at least 20. Training uses them in this order: drag <b>⠿</b> to reorder, tap an item to add a caption.</p>
     <div class="row" style="margin-top:14px">
       <label class="btn primary" for="fileIn">+ Add images</label>
       <input id="fileIn" type="file" accept="image/*" multiple>
-      <input id="textIn" type="text" placeholder="…or type a goal (e.g. “Healthy & strong”)" maxlength="60">
+      <input id="textIn" type="text" placeholder="…or type a goal (e.g. “Healthy & strong”)" maxlength="60" aria-label="Goal text">
       <button id="addText">Add</button>
     </div>
     <div id="grid" class="grid"></div>
     <div id="empty" class="empty">No items yet. Add images of your goals, or type them as text.</div>
-    <div id="count" class="count"></div>
+    <div class="foot">
+      <div id="count" class="count"></div>
+      <div class="row">
+        <button id="installBtn" class="small" hidden>Install app</button>
+        <button id="exportBtn" class="small" hidden>Back up</button>
+        <label class="btn small" for="importIn">Restore</label>
+        <input id="importIn" type="file" accept="application/json,.json">
+      </div>
+    </div>
+    <p id="storeTip" class="tip" hidden></p>
   </section>
 
-  <div class="tabs" role="tablist">
-    <button role="tab" id="tabCycle" aria-selected="true">Cycle with the app<small>The app flashes your images</small></button>
-    <button role="tab" id="tabTrain" aria-selected="false">Train your mind<small>Learn to cycle in your head</small></button>
+  <div class="tabs" role="tablist" aria-label="Mode">
+    <button role="tab" id="tabCycle" aria-controls="panelCycle" aria-selected="true">Cycle with the app<small>The app flashes your images</small></button>
+    <button role="tab" id="tabTrain" aria-controls="panelTrain" aria-selected="false">Train your mind<small>Learn to cycle in your head</small></button>
   </div>
 
   <!-- Mode 1: app cycling -->
-  <div id="panelCycle" class="panel">
+  <div id="panelCycle" class="panel" role="tabpanel" aria-labelledby="tabCycle">
     <section class="card">
       <h2>Session settings</h2>
       <div class="settings">
@@ -356,11 +431,12 @@
         </div>
         <div>
           <label class="check"><input id="shuffle" type="checkbox"> Shuffle every round</label>
+          <label class="check"><input id="caps" type="checkbox"> Show captions</label>
           <label class="check"><input id="chime" type="checkbox"> Soft chime at the end</label>
           <label class="check"><input id="fs" type="checkbox"> Full screen</label>
         </div>
       </div>
-      <p class="warn">⚠️ Fast cycling creates flashing. If you are sensitive to flashing lights, use a slower speed.</p>
+      <p id="speedWarn" class="warn">⚠️ Fast cycling creates flashing. If you are sensitive to flashing lights, use a slower speed.</p>
     </section>
     <div class="start">
       <button id="startBtn" class="primary big" disabled>▶ Start session</button>
@@ -368,7 +444,7 @@
   </div>
 
   <!-- Mode 2: mind training -->
-  <div id="panelTrain" class="panel" hidden>
+  <div id="panelTrain" class="panel" role="tabpanel" aria-labelledby="tabTrain" hidden>
     <section class="card">
       <h2>Train your mind</h2>
       <p class="sub" style="margin-top:-6px">
@@ -383,6 +459,10 @@
         <label class="field">
           <span>Practice length <output id="tdurOut"></output></span>
           <input id="tdur" type="range" min="1" max="10" step="1">
+        </label>
+        <label class="field">
+          <span>Tick volume <output id="volOut"></output></span>
+          <input id="vol" type="range" min="0" max="100" step="5">
         </label>
       </div>
       <div id="levels" class="levels"></div>
@@ -417,13 +497,45 @@
     </div>
   </div>
   <div id="quiz">
-    <button class="xbtn" id="quizClose">✕</button>
+    <button class="xbtn" id="quizClose" aria-label="Close quiz">✕</button>
     <div class="qtop"><span id="qProg"></span><span id="qScore"></span></div>
     <div class="qshow" id="qShow"></div>
-    <p style="margin:0 0 12px;font-size:1.1rem">Which image comes <b>next</b> in your list?</p>
+    <p id="qAsk" style="margin:0 0 12px;font-size:1.1rem"></p>
     <div class="qopts" id="qOpts"></div>
   </div>
 </div>
+
+<dialog id="editDlg" aria-labelledby="edTitle">
+  <form method="dialog">
+    <h2 id="edTitle">Edit item</h2>
+    <div class="edprev" id="edPrev"></div>
+    <label class="field">
+      <span id="edLbl">Caption</span>
+      <input id="edText" type="text" maxlength="60" autocomplete="off">
+    </label>
+    <div class="row edmove">
+      <button type="button" id="edUp" class="small">← Earlier</button>
+      <span id="edPos"></span>
+      <button type="button" id="edDown" class="small">Later →</button>
+    </div>
+    <div class="row">
+      <label class="btn small" for="edFile" id="edFileLbl">Replace image</label>
+      <input id="edFile" type="file" accept="image/*">
+      <button type="button" id="edDel" class="small danger">Remove</button>
+    </div>
+    <div class="row end"><button value="done" class="primary">Done</button></div>
+  </form>
+</dialog>
+
+<dialog id="askDlg" aria-labelledby="askTitle">
+  <form method="dialog">
+    <h2 id="askTitle"></h2>
+    <p id="askMsg"></p>
+    <div class="row end" id="askBtns"></div>
+  </form>
+</dialog>
+
+<div id="toast" role="status" aria-live="polite"></div>
 
 <script>
 (() => {
@@ -433,6 +545,8 @@
     ['#228be6','#66d9e8'], ['#e64980','#ff8787'], ['#f59f00','#ffd43b'],
     ['#7048e8','#339af0'], ['#0ca678','#94d82d']
   ];
+  // Above 3 flashes per second is the WCAG photosensitivity threshold.
+  const FLASH_MS = 334;
 
   // ---------- Storage (IndexedDB for items, localStorage for settings/stats) ----------
   let db = null;
@@ -451,17 +565,24 @@
       if (!db) return resolve([]);
       try {
         const req = db.transaction('items').objectStore('items').getAll();
-        req.onsuccess = () => resolve(req.result.sort((a, b) => a.created - b.created));
+        req.onsuccess = () => resolve(req.result);
         req.onerror = () => resolve([]);
       } catch { resolve([]); }
     });
   }
-  function dbPut(item) {
-    try { db && db.transaction('items', 'readwrite').objectStore('items').put(item); } catch {}
+  function dbWrite(fn) {
+    return new Promise(resolve => {
+      if (!db) return resolve(false);
+      try {
+        const tx = db.transaction('items', 'readwrite');
+        fn(tx.objectStore('items'));
+        tx.oncomplete = () => resolve(true);
+        tx.onerror = tx.onabort = () => { toast('Couldn’t save. Your device storage may be full.'); resolve(false); };
+      } catch { resolve(false); }
+    });
   }
-  function dbDel(id) {
-    try { db && db.transaction('items', 'readwrite').objectStore('items').delete(id); } catch {}
-  }
+  const dbPut = (...its) => dbWrite(st => its.forEach(it => st.put(it)));
+  const dbDel = (...ids) => dbWrite(st => ids.forEach(id => st.delete(id)));
   const ls = {
     get(k, d) { try { const v = localStorage.getItem(k); return v == null ? d : JSON.parse(v); } catch { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch {} }
@@ -470,12 +591,11 @@
   // ---------- State ----------
   let items = [];
   const urls = new Map();
-  const settings = Object.assign(
-    { speed: 500, dur: 3, shuffle: true, chime: true, fs: true, pace: 1000, tdur: 2, mode: 'cycle' },
-    ls.get('ic-settings', {})
-  );
+  const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const DEFAULTS = { speed: reduceMotion ? 800 : 500, dur: 3, shuffle: true, caps: false, chime: true, fs: true, pace: 1000, tdur: 2, vol: 50, mode: 'cycle' };
+  const settings = Object.assign({}, DEFAULTS, ls.get('ic-settings', {}));
   const stats = Object.assign({ total: 0, streak: 0, last: null }, ls.get('ic-stats', {}));
-  const trained = ls.get('ic-trained', {});
+  let trained = ls.get('ic-trained', {});
 
   const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
   const urlFor = it => {
@@ -483,17 +603,24 @@
     if (!urls.has(it.id)) urls.set(it.id, URL.createObjectURL(it.blob));
     return urls.get(it.id);
   };
+  const dropUrl = id => { if (urls.has(id)) { URL.revokeObjectURL(urls.get(id)); urls.delete(id); } };
   const gradient = it => {
-    const [a, b] = GRADIENTS[it.color % GRADIENTS.length];
+    const [a, b] = GRADIENTS[(it.color || 0) % GRADIENTS.length];
     return `linear-gradient(135deg, ${a}, ${b})`;
   };
+  // Image items may carry a caption in `text`; text-only items are just `text`.
   function tileFor(it) {
     const tile = document.createElement('div');
     tile.className = 'tile';
     if (it.blob) {
       const img = document.createElement('img');
-      img.src = urlFor(it); img.alt = '';
+      img.src = urlFor(it); img.alt = it.text || '';
       tile.appendChild(img);
+      if (it.text) {
+        const cap = document.createElement('span');
+        cap.className = 'cap'; cap.textContent = it.text;
+        tile.appendChild(cap);
+      }
     } else {
       tile.style.background = gradient(it);
       tile.textContent = it.text;
@@ -501,21 +628,68 @@
     return tile;
   }
 
+  // ---------- Toast + dialogs ----------
+  function toast(msg, action) {
+    const t = $('toast');
+    t.replaceChildren(msg);
+    if (action) {
+      const b = document.createElement('button');
+      b.className = 'small'; b.textContent = action.label;
+      b.onclick = () => { t.classList.remove('on'); action.fn(); };
+      t.appendChild(b);
+    }
+    t.classList.add('on');
+    clearTimeout(toast.t);
+    toast.t = setTimeout(() => t.classList.remove('on'), action ? 6000 : 3000);
+  }
+  // Ask a question with buttons: [[value, label, primary?], ...]. Resolves to the chosen value, or '' if dismissed.
+  function ask(title, msg, buttons) {
+    const d = $('askDlg');
+    $('askTitle').textContent = title;
+    $('askMsg').textContent = msg;
+    $('askBtns').replaceChildren(...buttons.map(([v, label, primary]) => {
+      const b = document.createElement('button');
+      b.value = v; b.textContent = label;
+      if (primary) b.className = 'primary';
+      return b;
+    }));
+    d.returnValue = '';
+    d.showModal();
+    return new Promise(r => d.addEventListener('close', () => r(d.returnValue), { once: true }));
+  }
+
   // ---------- Library UI ----------
+  const reorder = () => { items.forEach((it, i) => { it.order = i; }); return dbPut(...items); };
   function render() {
     const grid = $('grid');
-    grid.innerHTML = '';
-    items.forEach((it, i) => {
+    grid.replaceChildren(...items.map((it, i) => {
       const tile = tileFor(it);
+      tile.dataset.id = it.id;
+      tile.tabIndex = 0;
+      tile.setAttribute('role', 'button');
+      tile.setAttribute('aria-label', `Item ${i + 1}${it.text ? ': ' + it.text : ''}. Edit`);
+      tile.onclick = e => { if (!e.target.closest('button')) openEditor(it.id); };
+      tile.onkeydown = e => { if (e.target === tile && (e.key === 'Enter' || e.key === ' ')) { e.preventDefault(); openEditor(it.id); } };
       const num = document.createElement('span');
       num.className = 'num'; num.textContent = i + 1;
-      tile.appendChild(num);
+      const grip = document.createElement('button');
+      grip.className = 'grip'; grip.textContent = '⠿';
+      grip.title = 'Drag to reorder';
+      grip.setAttribute('aria-label', `Move item ${i + 1}. Use arrow keys to move`);
+      grip.onpointerdown = e => startDrag(e, tile);
+      grip.onkeydown = e => {
+        const d = { ArrowLeft: -1, ArrowUp: -1, ArrowRight: 1, ArrowDown: 1 }[e.key];
+        if (!d) return;
+        e.preventDefault();
+        if (move(it.id, d)) grid.querySelector(`[data-id="${it.id}"] .grip`).focus();
+      };
       const del = document.createElement('button');
       del.className = 'del'; del.textContent = '✕'; del.title = 'Remove';
+      del.setAttribute('aria-label', `Remove item ${i + 1}`);
       del.onclick = () => removeItem(it.id);
-      tile.appendChild(del);
-      grid.appendChild(tile);
-    });
+      tile.append(num, grip, del);
+      return tile;
+    }));
     $('empty').style.display = items.length ? 'none' : 'block';
     const n = items.length, c = $('count');
     c.textContent = n === 0 ? '' : n >= 20
@@ -523,12 +697,59 @@
       : `${n} item${n === 1 ? '' : 's'}. Add ${20 - n} more to reach the recommended 20.`;
     c.classList.toggle('ok', n >= 20);
     $('startBtn').disabled = n < 2;
+    $('exportBtn').hidden = n === 0;
     renderLevels();
+    renderStoreTip();
+  }
+  function move(id, d) {
+    const i = items.findIndex(x => x.id === id), j = i + d;
+    if (i < 0 || j < 0 || j >= items.length) return false;
+    [items[i], items[j]] = [items[j], items[i]];
+    reorder(); render();
+    return true;
+  }
+  function startDrag(e, tile) {
+    if (e.button > 0) return;
+    e.preventDefault();
+    // Listen on window: moving the tile in the DOM would drop pointer capture on the grip.
+    const grid = $('grid'), pid = e.pointerId;
+    tile.classList.add('dragging'); grid.classList.add('sorting');
+    const start = [...grid.children].indexOf(tile);
+    const onMove = ev => {
+      if (ev.pointerId !== pid) return;
+      const over = document.elementFromPoint(ev.clientX, ev.clientY)?.closest('#grid .tile');
+      if (over && over !== tile) {
+        const kids = [...grid.children];
+        grid.insertBefore(tile, kids.indexOf(tile) < kids.indexOf(over) ? over.nextSibling : over);
+      }
+      // Scroll the page while dragging near the top or bottom edge.
+      if (ev.clientY < 60) scrollBy(0, -14);
+      else if (ev.clientY > innerHeight - 60) scrollBy(0, 14);
+    };
+    const onUp = ev => {
+      if (ev.pointerId !== pid) return;
+      removeEventListener('pointermove', onMove);
+      removeEventListener('pointerup', onUp);
+      removeEventListener('pointercancel', onUp);
+      tile.classList.remove('dragging'); grid.classList.remove('sorting');
+      if ([...grid.children].indexOf(tile) === start) return;
+      const byId = new Map(items.map(x => [x.id, x]));
+      items = [...grid.children].map(t => byId.get(t.dataset.id));
+      reorder(); render();
+    };
+    addEventListener('pointermove', onMove);
+    addEventListener('pointerup', onUp);
+    addEventListener('pointercancel', onUp);
   }
   function removeItem(id) {
-    items = items.filter(i => i.id !== id);
-    if (urls.has(id)) { URL.revokeObjectURL(urls.get(id)); urls.delete(id); }
-    dbDel(id); render();
+    const i = items.findIndex(x => x.id === id);
+    if (i < 0) return;
+    const [it] = items.splice(i, 1);
+    dropUrl(id); dbDel(id); reorder(); render();
+    toast('Item removed.', { label: 'Undo', fn: () => {
+      items.splice(Math.min(i, items.length), 0, it);
+      reorder(); render();
+    } });
   }
   async function shrink(file) {
     // Downscale large photos so storage stays small and cycling stays smooth.
@@ -542,23 +763,158 @@
       return await new Promise(r => cv.toBlob(b => r(b || file), 'image/jpeg', 0.85));
     } catch { return file; }
   }
+  function newItem(fields) {
+    return Object.assign({ id: uid(), created: Date.now(), order: items.length, color: items.length }, fields);
+  }
   $('fileIn').onchange = async e => {
+    const added = [];
     for (const f of e.target.files) {
       if (!f.type.startsWith('image/')) continue;
-      const it = { id: uid(), created: Date.now(), blob: await shrink(f) };
-      items.push(it); dbPut(it);
+      const it = newItem({ blob: await shrink(f) });
+      items.push(it); added.push(it);
     }
-    e.target.value = ''; render();
+    e.target.value = '';
+    await dbPut(...added); render(); keepStorage();
   };
   function addText() {
     const t = $('textIn').value.trim();
     if (!t) return;
-    const it = { id: uid(), created: Date.now(), text: t, color: items.length };
+    const it = newItem({ text: t });
     items.push(it); dbPut(it);
-    $('textIn').value = ''; render();
+    $('textIn').value = ''; render(); keepStorage();
   }
   $('addText').onclick = addText;
+  // File-picker labels act as buttons, so make them reachable from the keyboard too.
+  for (const l of document.querySelectorAll('label.btn[for]')) {
+    l.tabIndex = 0; l.setAttribute('role', 'button');
+    l.onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $(l.htmlFor).click(); } };
+  }
   $('textIn').onkeydown = e => { if (e.key === 'Enter') addText(); };
+
+  // ---------- Item editor ----------
+  let editing = null;
+  function openEditor(id) {
+    editing = id;
+    fillEditor();
+    $('edText').value = items.find(x => x.id === id).text || '';
+    $('editDlg').showModal();
+  }
+  function fillEditor() {
+    const i = items.findIndex(x => x.id === editing), it = items[i];
+    if (!it) return $('editDlg').close();
+    $('edPrev').replaceChildren(tileFor(it));
+    $('edTitle').textContent = `Item ${i + 1}`;
+    $('edLbl').textContent = it.blob ? 'Caption (optional)' : 'Text';
+    $('edFileLbl').textContent = it.blob ? 'Replace image' : 'Add an image';
+    $('edPos').textContent = `${i + 1} of ${items.length}`;
+    $('edUp').disabled = i === 0;
+    $('edDown').disabled = i === items.length - 1;
+  }
+  $('edUp').onclick = () => { move(editing, -1); fillEditor(); };
+  $('edDown').onclick = () => { move(editing, 1); fillEditor(); };
+  $('edFile').onchange = async e => {
+    const f = e.target.files[0]; e.target.value = '';
+    const it = items.find(x => x.id === editing);
+    if (!f || !it || !f.type.startsWith('image/')) return;
+    it.text = $('edText').value.trim();
+    it.blob = await shrink(f);
+    dropUrl(it.id); dbPut(it); render(); fillEditor();
+  };
+  $('edDel').onclick = () => { const id = editing; $('editDlg').close(); removeItem(id); };
+  $('editDlg').addEventListener('close', () => {
+    const it = items.find(x => x.id === editing);
+    editing = null;
+    if (!it) return;
+    const t = $('edText').value.trim();
+    // A text-only item needs its text; ignore an emptied field.
+    if (t === (it.text || '') || (!t && !it.blob)) return;
+    it.text = t; dbPut(it); render();
+  });
+
+  // ---------- Backup, restore, persistence, install ----------
+  const blobToDataURL = b => new Promise((res, rej) => {
+    const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(b);
+  });
+  $('exportBtn').onclick = async () => {
+    const data = {
+      app: 'image-cycling', version: 1, exported: new Date().toISOString(), settings, stats, trained,
+      items: await Promise.all(items.map(async it => ({
+        text: it.text || '', color: it.color, image: it.blob ? await blobToDataURL(it.blob) : null
+      })))
+    };
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
+    a.download = `image-cycling-backup-${dayStr(0)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+    ls.set('ic-backup', Date.now()); renderStoreTip();
+    toast('Backup saved. Keep the file somewhere safe.');
+  };
+  $('importIn').onchange = async e => {
+    const f = e.target.files[0]; e.target.value = '';
+    if (!f) return;
+    let data;
+    try {
+      data = JSON.parse(await f.text());
+      if (data.app !== 'image-cycling' || !Array.isArray(data.items)) throw 0;
+    } catch { return toast('That file isn’t an Image Cycling backup.'); }
+    let mode = 'replace';
+    if (items.length) {
+      mode = await ask('Restore backup',
+        `This backup has ${data.items.length} item${data.items.length === 1 ? '' : 's'}. Replace your current list, or add them to the end of it?`,
+        [['', 'Cancel'], ['add', 'Add to list'], ['replace', 'Replace list', true]]);
+      if (!mode) return;
+    }
+    if (mode === 'replace') {
+      await dbDel(...items.map(x => x.id));
+      for (const id of [...urls.keys()]) dropUrl(id);
+      items = [];
+      for (const k of Object.keys(DEFAULTS)) {
+        const v = data.settings && data.settings[k];
+        if (typeof v === typeof DEFAULTS[k]) settings[k] = v;
+      }
+      if (data.stats && typeof data.stats.total === 'number') { Object.assign(stats, data.stats); ls.set('ic-stats', stats); renderStats(); }
+      if (data.trained && typeof data.trained === 'object') { trained = data.trained; ls.set('ic-trained', trained); }
+      bindSettings(); setMode(settings.mode);
+    }
+    const added = [];
+    for (const x of data.items) {
+      const it = newItem({});
+      if (typeof x.color === 'number') it.color = x.color;
+      if (x.text) it.text = String(x.text).slice(0, 60);
+      if (typeof x.image === 'string' && x.image.startsWith('data:image/')) {
+        try { it.blob = await (await fetch(x.image)).blob(); } catch {}
+      }
+      if (!it.blob && !it.text) continue;
+      items.push(it); added.push(it);
+    }
+    await dbPut(...added); render(); keepStorage();
+    toast(`Restored ${added.length} item${added.length === 1 ? '' : 's'}.`);
+  };
+  const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  let persisted = false;
+  async function keepStorage() {
+    // Ask the browser not to evict our data under storage pressure.
+    try { if (!persisted && navigator.storage && navigator.storage.persist) persisted = await navigator.storage.persist(); } catch {}
+    renderStoreTip();
+  }
+  function renderStoreTip() {
+    const tip = $('storeTip'), last = ls.get('ic-backup', 0);
+    const recent = last && Date.now() - last < 30 * 864e5;
+    tip.hidden = !items.length || recent || (persisted && standalone());
+    tip.textContent = standalone() || persisted
+      ? 'Your list is stored only on this device. Back it up now and then so you never lose it.'
+      : 'Your list is stored only in this browser, which may clear it if space runs low or, on iPhone, after a week without use. Back it up, or add this app to your home screen to keep it safe.';
+  }
+  let installEvt = null;
+  addEventListener('beforeinstallprompt', e => { e.preventDefault(); installEvt = e; $('installBtn').hidden = false; });
+  $('installBtn').onclick = async () => {
+    if (!installEvt) return;
+    installEvt.prompt();
+    try { await installEvt.userChoice; } catch {}
+    installEvt = null; $('installBtn').hidden = true;
+  };
+  addEventListener('appinstalled', () => { $('installBtn').hidden = true; keepStorage(); });
 
   // ---------- Settings UI ----------
   function bindSettings() {
@@ -567,27 +923,42 @@
       $('durOut').textContent = `${settings.dur} min`;
       $('paceOut').textContent = `${(settings.pace / 1000).toFixed(2)} s per image`;
       $('tdurOut').textContent = `${settings.tdur} min`;
+      $('volOut').textContent = settings.vol ? `${settings.vol}%` : 'Off';
+      const hot = settings.speed < FLASH_MS;
+      $('speedWarn').classList.toggle('hot', hot);
+      $('speedWarn').textContent = hot
+        ? '⚠️ Faster than 3 images per second. This level of flashing can trigger seizures in people with photosensitive epilepsy.'
+        : '⚠️ Fast cycling creates flashing. If you are sensitive to flashing lights, use a slower speed.';
       ls.set('ic-settings', settings);
     };
-    for (const k of ['speed', 'dur', 'pace', 'tdur']) {
+    for (const k of ['speed', 'dur', 'pace', 'tdur', 'vol']) {
       $(k).value = settings[k];
       $(k).oninput = e => { settings[k] = +e.target.value; upd(); };
     }
-    for (const k of ['shuffle', 'chime', 'fs']) {
+    for (const k of ['shuffle', 'caps', 'chime', 'fs']) {
       $(k).checked = settings[k];
       $(k).onchange = e => { settings[k] = e.target.checked; upd(); };
     }
+    $('vol').onchange = () => { audio(); tick(false); };
     upd();
   }
-  function setMode(m) {
+  const TABS = { cycle: 'tabCycle', train: 'tabTrain' };
+  function setMode(m, focus) {
     settings.mode = m; ls.set('ic-settings', settings);
-    $('tabCycle').setAttribute('aria-selected', m === 'cycle');
-    $('tabTrain').setAttribute('aria-selected', m === 'train');
+    for (const [k, id] of Object.entries(TABS)) {
+      $(id).setAttribute('aria-selected', k === m);
+      $(id).tabIndex = k === m ? 0 : -1;
+    }
     $('panelCycle').hidden = m !== 'cycle';
     $('panelTrain').hidden = m !== 'train';
+    if (focus) $(TABS[m]).focus();
   }
   $('tabCycle').onclick = () => setMode('cycle');
   $('tabTrain').onclick = () => setMode('train');
+  document.querySelector('.tabs').onkeydown = e => {
+    const m = { ArrowLeft: 'cycle', Home: 'cycle', ArrowRight: 'train', End: 'train' }[e.key];
+    if (m) { e.preventDefault(); setMode(m, true); }
+  };
 
   // ---------- Stats ----------
   const dayStr = offset => new Date(Date.now() - offset * 864e5).toLocaleDateString('en-CA');
@@ -609,7 +980,7 @@
     { id: 1, name: 'Learn your list',
       desc: 'Slowly go through your images in order, twice, to memorise them.',
       hint: 'Look at each image and link it to its number and meaning.',
-      run: () => ({ interval: 1800, rounds: 2, visible: () => true, tick: false, caption: true }) },
+      run: () => ({ interval: 1800, rounds: 2, visible: () => true, tick: false, caption: true, labels: true }) },
     { id: 2, name: 'Fill the gaps',
       desc: 'Every other image is blank. Picture the missing one when you hear the tick.',
       hint: 'When the screen goes blank, picture the image that belongs there.',
@@ -636,16 +1007,19 @@
     const box = $('levels');
     box.innerHTML = '';
     const n = items.length;
+    const upNext = LEVELS.find(L => !trained[L.id]);
     for (const L of LEVELS) {
+      const isNext = L === upNext;
       const row = document.createElement('div');
-      row.className = 'level' + (trained[L.id] ? ' done' : '');
+      row.className = 'level' + (trained[L.id] ? ' done' : '') + (isNext ? ' next' : '');
       row.innerHTML = `<div class="badge">${trained[L.id] ? '✓' : L.id}</div>
         <div><h3></h3><p></p></div>`;
       row.querySelector('h3').textContent = L.name;
+      if (isNext) row.querySelector('h3').insertAdjacentHTML('beforeend', '<span class="tag">Up next</span>');
       row.querySelector('p').textContent = L.desc;
       const b = document.createElement('button');
       b.textContent = trained[L.id] ? 'Practise again' : 'Start';
-      if (!trained[L.id]) b.classList.add('primary');
+      if (isNext) b.classList.add('primary');
       b.disabled = n < 2;
       b.onclick = () => startTraining(L);
       row.appendChild(b);
@@ -655,7 +1029,7 @@
     const q = document.createElement('div');
     q.className = 'level' + (trained.quiz ? ' done' : '');
     q.innerHTML = `<div class="badge">${trained.quiz ? '✓' : '?'}</div>
-      <div><h3>Memory quiz</h3><p>Test yourself: which image comes next? Best score: <b>${trained.quiz || 0}/10</b></p></div>`;
+      <div><h3>Memory quiz</h3><p>Test yourself: which image comes before or after? Best score: <b>${trained.quiz || 0}/10</b></p></div>`;
     const qb = document.createElement('button');
     qb.textContent = 'Take quiz'; qb.disabled = n < 4;
     qb.onclick = startQuiz;
@@ -672,11 +1046,11 @@
     return actx;
   }
   function tick(soft) {
-    const ctx = actx; if (!ctx) return;
+    const ctx = actx, v = settings.vol / 50; if (!ctx || !v) return;
     try {
       const o = ctx.createOscillator(), g = ctx.createGain(), t = ctx.currentTime;
       o.type = 'sine'; o.frequency.value = soft ? 660 : 880;
-      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(soft ? 0.05 : 0.12, t + 0.005);
+      g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime((soft ? 0.05 : 0.12) * v, t + 0.005);
       g.gain.exponentialRampToValueAtTime(0.001, t + 0.08);
       o.connect(g).connect(ctx.destination); o.start(t); o.stop(t + 0.1);
     } catch {}
@@ -694,9 +1068,24 @@
     } catch {}
   }
 
+  // ---------- Screen wake lock (keeps eyes-closed sessions from stalling) ----------
+  let wake = null;
+  async function lockScreen() {
+    try {
+      if (wake || !('wakeLock' in navigator)) return;
+      wake = await navigator.wakeLock.request('screen');
+      wake.addEventListener('release', () => { wake = null; });
+    } catch { wake = null; }
+  }
+  function unlockScreen() { try { wake && wake.release(); } catch {} wake = null; }
+
   // ---------- Session engine (shared by both modes) ----------
-  const S = { timer: null, order: [], k: 0, elapsed: 0, total: 0, paused: false, running: false, lastTick: 0, raf: 0, cfg: null, level: null };
+  // Timing comes from the clock, not from counting frames, so a busy or
+  // backgrounded page can't stretch a session or drift the pace.
+  const S = { run: 0, running: false, counting: false, paused: false, cfg: null, level: null,
+              order: [], k: 0, round: 0, t0: 0, pausedMs: 0, pausedAt: 0, total: 0, raf: 0, poll: 0 };
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   let nodes = new Map();
   function buildNodes() {
@@ -704,7 +1093,7 @@
     nodes = new Map();
     for (const it of items) {
       let el;
-      if (it.blob) { el = new Image(); el.src = urlFor(it); el.decoding = 'async'; }
+      if (it.blob) { el = new Image(); el.src = urlFor(it); el.decoding = 'async'; el.alt = it.text || ''; }
       else { el = document.createElement('div'); el.className = 'textcard'; el.style.background = gradient(it); el.textContent = it.text; }
       nodes.set(it.id, el);
     }
@@ -713,10 +1102,16 @@
 
   function step() {
     const c = S.cfg, n = S.order.length;
-    if (S.k > 0 && S.k % n === 0 && c.shuffle) S.order = shuffle(S.order.slice());
+    const round = Math.floor(S.k / n);
+    if (round !== S.round) { S.round = round; if (c.shuffle) S.order = shuffle(S.order.slice()); }
     const pos = S.k % n, it = S.order[pos];
     const vis = c.visible(S.k);
     const kids = [vis ? nodes.get(it.id) : imagineNode];
+    if (vis && c.labels && it.blob && it.text) {
+      const lab = document.createElement('div');
+      lab.className = 'label'; lab.textContent = it.text;
+      kids.push(lab);
+    }
     if (c.caption) {
       const cap = document.createElement('div');
       cap.className = 'caption'; cap.textContent = `${pos + 1} of ${n}`;
@@ -726,19 +1121,25 @@
     if (c.tick) tick(vis);
     S.k++;
   }
-  function loop(now) {
-    if (!S.running) return;
-    if (!S.paused) {
-      S.elapsed += now - S.lastTick;
-      $('bar').style.width = Math.min(100, (S.elapsed / S.total) * 100) + '%';
-      if (S.elapsed >= S.total) return finish();
-    }
-    S.lastTick = now;
-    S.raf = requestAnimationFrame(loop);
+  const activeMs = now => now - S.t0 - S.pausedMs - (S.paused ? now - S.pausedAt : 0);
+  function pump() {
+    if (!S.running || S.counting) return;
+    const el = activeMs(performance.now());
+    $('bar').style.width = Math.min(100, (el / S.total) * 100) + '%';
+    if (el >= S.total) return finish();
+    if (S.cfg.free || S.paused) return;
+    const due = Math.floor(el / S.cfg.interval) + 1;
+    if (due - S.k > 1) S.k = due - 1; // fell behind (e.g. tab hidden): skip ahead, don't burst
+    while (S.k < due) step();
+  }
+  function loop() {
+    pump();
+    if (S.running) S.raf = requestAnimationFrame(loop);
   }
 
   async function runSession(cfg, level) {
     if (items.length < 2) return;
+    const run = ++S.run;
     audio();
     buildNodes();
     S.cfg = cfg; S.level = level || null;
@@ -748,33 +1149,44 @@
     $('stage').replaceChildren(); $('bar').style.width = '0';
     $('hint').textContent = (cfg.hint ? cfg.hint + ' · ' : '') + 'Tap or Space to pause · Esc to stop';
     $('hint').style.opacity = 1;
+    lockScreen();
     if (settings.fs && ov.requestFullscreen) { try { await ov.requestFullscreen(); } catch {} }
-    S.running = true; S.paused = false;
+    if (run !== S.run) return;
+    S.running = true; S.counting = true; S.paused = false;
     for (const n of [3, 2, 1]) {
       $('countdown').textContent = n;
-      await new Promise(r => setTimeout(r, 800));
-      if (!S.running) return;
+      await sleep(800);
+      if (run !== S.run) return;
     }
+    S.counting = false;
     $('countdown').textContent = '';
-    setTimeout(() => { if (S.running) $('hint').style.opacity = 0; }, cfg.hint ? 5000 : 2500);
+    setTimeout(() => { if (run === S.run && S.running) $('hint').style.opacity = 0; }, cfg.hint ? 5000 : 2500);
     S.order = cfg.shuffle ? shuffle(items.slice()) : items.slice();
-    S.k = 0; S.elapsed = 0;
+    S.k = 0; S.round = 0; S.pausedMs = 0;
     S.total = cfg.rounds ? cfg.rounds * items.length * cfg.interval : cfg.minutes * 60000;
     if (cfg.free) {
       const d = document.createElement('div');
       d.className = 'free';
       d.textContent = 'Close your eyes and cycle through your list at your own pace. You’ll hear a chime when time is up.';
       $('stage').replaceChildren(d);
-    } else {
-      step();
-      S.timer = setInterval(() => { if (!S.paused) step(); }, cfg.interval);
     }
-    S.lastTick = performance.now();
+    S.t0 = performance.now();
+    pump();
     S.raf = requestAnimationFrame(loop);
+    // rAF stops while the page is hidden; this keeps the clock (and the end chime) going.
+    S.poll = setInterval(pump, 250);
   }
 
-  function startCycle() {
-    runSession({ interval: settings.speed, minutes: settings.dur, visible: () => true, shuffle: settings.shuffle, tick: false });
+  async function startCycle() {
+    if (settings.speed < FLASH_MS && !ls.get('ic-flash-ok', false)) {
+      const ok = await ask('Fast flashing',
+        `At ${(1000 / settings.speed).toFixed(1)} images per second the screen flashes faster than 3 times a second, which can trigger seizures in people with photosensitive epilepsy. Continue only if flashing lights don’t affect you.`,
+        [['slow', 'Use a safer speed'], ['go', 'I understand, start', true]]);
+      if (ok === 'slow') { settings.speed = FLASH_MS + 16; bindSettings(); }
+      else if (ok === 'go') ls.set('ic-flash-ok', true);
+      else return;
+    }
+    runSession({ interval: settings.speed, minutes: settings.dur, visible: () => true, shuffle: settings.shuffle, tick: false, labels: settings.caps });
   }
   function startTraining(L) {
     const cfg = Object.assign({ minutes: settings.tdur, shuffle: false, hint: L.hint }, L.run());
@@ -782,15 +1194,19 @@
   }
 
   function stopTimers() {
-    S.running = false; clearInterval(S.timer); cancelAnimationFrame(S.raf);
+    S.running = false; S.counting = false; S.run++;
+    cancelAnimationFrame(S.raf); clearInterval(S.poll);
   }
   function finish() {
+    const cfg = S.cfg, L = S.level;
     stopTimers();
     recordSession();
-    if (settings.chime || S.cfg.free) chime();
+    if (settings.chime || cfg.free) chime();
     $('stage').replaceChildren();
     $('hint').style.opacity = 0;
-    const L = S.level, next = L && LEVELS.find(x => x.id === L.id + 1);
+    $('paused').style.display = 'none';
+    $('bar').style.width = '100%';
+    const next = L && LEVELS.find(x => x.id === L.id + 1);
     if (L) {
       trained[L.id] = true; ls.set('ic-trained', trained); renderLevels();
       $('doneTitle').textContent = `Level ${L.id} complete ✨`;
@@ -808,21 +1224,33 @@
   }
   function exit() {
     stopTimers();
+    unlockScreen();
     $('session').classList.remove('on');
     $('countdown').textContent = '';
+    $('quiz').style.display = 'none';
     if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
   }
   function togglePause() {
-    if (!S.running || $('countdown').textContent) return;
+    if (!S.running || S.counting) return;
+    const now = performance.now();
+    if (S.paused) S.pausedMs += now - S.pausedAt; else S.pausedAt = now;
     S.paused = !S.paused;
     $('paused').style.display = S.paused ? 'block' : 'none';
   }
 
   // ---------- Memory quiz ----------
-  const Q = { n: 0, score: 0, total: 10, busy: false };
+  // Questions come from a shuffled deck of (item, direction) pairs, so none repeat until all are used.
+  // "Next" never asks about the last item and "before" never about the first: the list doesn't wrap.
+  const Q = { n: 0, score: 0, total: 10, busy: false, deck: [], opts: [] };
+  function quizDeck() {
+    const d = [];
+    for (let i = 0; i < items.length - 1; i++) d.push({ i, dir: 1 }, { i: i + 1, dir: -1 });
+    return shuffle(d);
+  }
   function startQuiz() {
     if (items.length < 4) return;
-    Q.n = 0; Q.score = 0; Q.busy = false;
+    stopTimers();
+    Q.n = 0; Q.score = 0; Q.busy = false; Q.deck = quizDeck();
     $('session').classList.add('on');
     for (const id of ['done', 'paused']) $(id).style.display = 'none';
     $('stage').replaceChildren(); $('bar').style.width = '0'; $('hint').style.opacity = 0;
@@ -832,31 +1260,36 @@
   function nextQuestion() {
     if (Q.n >= Q.total) return endQuiz();
     Q.busy = false;
-    const n = items.length, i = Math.floor(Math.random() * n);
-    const answer = items[(i + 1) % n];
+    if (!Q.deck.length) Q.deck = quizDeck();
+    const { i, dir } = Q.deck.pop();
+    const answer = items[i + dir];
     const pool = shuffle(items.filter(x => x !== answer && x !== items[i]));
-    const opts = shuffle([answer, ...pool.slice(0, 3)]);
+    const opts = Q.opts = shuffle([answer, ...pool.slice(0, 3)]);
     $('qProg').textContent = `Question ${Q.n + 1} of ${Q.total}`;
     $('qScore').textContent = `Score ${Q.score}`;
+    const b = document.createElement('b');
+    b.textContent = dir > 0 ? 'next' : 'before it';
+    $('qAsk').replaceChildren('Which image comes ', b, ' in your list?');
     const shown = tileFor(items[i]);
     const tag = document.createElement('span');
     tag.className = 'num'; tag.textContent = `#${i + 1}`;
     shown.appendChild(tag);
     $('qShow').replaceChildren(shown);
-    $('qOpts').replaceChildren(...opts.map(o => {
-      const b = document.createElement('button');
-      b.className = 'opt'; b.appendChild(tileFor(o));
-      b.onclick = () => {
+    $('qOpts').replaceChildren(...opts.map((o, k) => {
+      const btn = document.createElement('button');
+      btn.className = 'opt'; btn.appendChild(tileFor(o));
+      btn.setAttribute('aria-label', `Option ${k + 1}${o.text ? ': ' + o.text : ''}`);
+      btn.onclick = () => {
         if (Q.busy) return; Q.busy = true;
         const ok = o === answer;
         if (ok) Q.score++;
-        b.classList.add(ok ? 'right' : 'wrong');
-        if (!ok) [...$('qOpts').children][opts.indexOf(answer)].classList.add('right');
+        btn.classList.add(ok ? 'right' : 'wrong');
+        if (!ok) $('qOpts').children[opts.indexOf(answer)].classList.add('right');
         $('qScore').textContent = `Score ${Q.score}`;
         Q.n++;
-        setTimeout(nextQuestion, ok ? 600 : 1400);
+        setTimeout(() => { if ($('quiz').style.display === 'flex') nextQuestion(); }, ok ? 600 : 1400);
       };
-      return b;
+      return btn;
     }));
   }
   function endQuiz() {
@@ -880,19 +1313,31 @@
   document.addEventListener('keydown', e => {
     if (!$('session').classList.contains('on')) return;
     if (e.key === 'Escape') exit();
-    else if (e.key === ' ') { e.preventDefault(); togglePause(); }
+    else if ($('quiz').style.display === 'flex' && /^[1-4]$/.test(e.key)) $('qOpts').children[e.key - 1]?.click();
+    else if (e.key === ' ' && S.running) { e.preventDefault(); togglePause(); }
   });
   document.addEventListener('fullscreenchange', () => {
     if (!document.fullscreenElement && S.running) exit();
+  });
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState !== 'visible') return;
+    renderStats(); // the streak may have lapsed overnight
+    if (S.running) { lockScreen(); audio(); }
   });
 
   // ---------- Boot ----------
   (async () => {
     bindSettings(); renderStats(); setMode(settings.mode);
     await openDB();
-    items = await dbAll();
+    items = (await dbAll()).sort((a, b) => (a.order ?? Infinity) - (b.order ?? Infinity) || a.created - b.created);
+    if (items.some((it, i) => it.order !== i)) reorder();
+    try { persisted = !!(navigator.storage && navigator.storage.persisted && await navigator.storage.persisted()); } catch {}
     render();
+    if (items.length) keepStorage();
   })();
+  if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
+    addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
+  }
 })();
 </script>
 </body>
