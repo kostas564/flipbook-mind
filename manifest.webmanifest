@@ -1,7 +1,7 @@
 {
   "name": "Image Cycling",
   "short_name": "Image Cycling",
-  "description": "Rapid image cycling for your goals, based on the Bengston method.",
+  "description": "A goals app inspired by William Bengston’s image cycling.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

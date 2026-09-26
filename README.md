@@ -1,6 +1,6 @@
 # Image Cycling
 
-A web app for rapid image cycling, based on the Bengston method.
+A web app inspired by William Bengston’s image cycling.
 
 ## Two modes
 
