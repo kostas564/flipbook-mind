@@ -4,15 +4,15 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#07051a">
-<meta name="description" content="A goals app inspired by William Bengston’s image cycling. Works offline; your images never leave your device.">
+<meta name="description" content="A free rapid-imaging practice tool inspired by William Bengston’s Image Cycling® technique. Works offline; your images never leave your device.">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Image Cycling">
+<meta name="apple-mobile-web-app-title" content="Flipbook Mind">
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
-<title>Image Cycling</title>
+<title>Flipbook Mind</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -393,8 +393,8 @@
     <div class="brand">
       <div class="orb" aria-hidden="true"></div>
       <div>
-        <h1>Image Cycling</h1>
-        <p class="sub">Inspired by William Bengston’s image cycling.</p>
+        <h1>Flipbook Mind</h1>
+        <p class="sub">A free rapid-imaging practice tool inspired by William Bengston’s Image Cycling® technique.</p>
       </div>
     </div>
     <div class="stats">
@@ -499,7 +499,7 @@
     <details>
       <summary>How it started</summary>
       <p>In the summer of 1971, 21-year-old Bengston was working as a lifeguard on Long Island when he met Bennett Mayrick, a middle-aged house cleaner said to have psychic and healing abilities.</p>
-      <p>Over several months of questions and self-observation, the two worked out a technique of very rapid mental imaging combined with hands-on practice. Bengston called the mental part <b>image cycling</b>.</p>
+      <p>Over several months of questions and self-observation, the two worked out a technique of very rapid mental imaging combined with hands-on practice. Bengston called the mental part <b>Image Cycling®</b>.</p>
     </details>
 
     <details>
@@ -510,7 +510,7 @@
     </details>
 
     <details>
-      <summary>How image cycling works</summary>
+      <summary>How Image Cycling works</summary>
       <ol>
         <li>Write a list of at least 20 specific things you want for yourself. Make them concrete: not “be happy”, but a specific place you want to visit.</li>
         <li>Turn each item into one vivid image that shows it already achieved, as if it’s happening now.</li>
@@ -523,7 +523,7 @@
 
     <details>
       <summary>Why cycle fast?</summary>
-      <p>The images don’t do the healing. Their job is to keep your thinking mind busy so it stays out of the way. Bennett Mayrick noticed he healed better while chatting about something unrelated than when he concentrated, and image cycling was built to recreate that on purpose.</p>
+      <p>The images don’t do the healing. Their job is to keep your thinking mind busy so it stays out of the way. Bennett Mayrick noticed he healed better while chatting about something unrelated than when he concentrated, and Image Cycling was built to recreate that on purpose.</p>
       <p>Bengston compared the conscious mind to a guard dog: throw it a steak to keep it busy while the real work happens. The details follow from that:</p>
       <ul>
         <li><b>A selfish list:</b> the images are things <i>you</i> want, not things for someone else. Feeding the ego what it secretly wants keeps it content and quiet.</li>
@@ -536,7 +536,7 @@
 
     <details>
       <summary>Getting what’s on your list</summary>
-      <p>Bengston developed image cycling for healing, but people who practised it reported a side effect: things on their lists tended to come true, without them trying to make it happen. That is why image cycling spread online as a manifestation technique.</p>
+      <p>Bengston developed Image Cycling for healing, but people who practised it reported a side effect: things on their lists tended to come true, without them trying to make it happen. That is why Image Cycling spread online as a manifestation technique.</p>
       <p>Bengston himself didn’t believe in “manifesting” in the sense of creating something from nothing. Instead, he speculated about a “teleological pull from the future” drawing the outcomes on your list toward you. This app follows the same approach: build your list, cycle it lightly every day, and let the results take care of themselves.</p>
     </details>
 
@@ -560,7 +560,7 @@
     <h2>Disclaimer</h2>
     <p>This is a personal, just-for-fun project. It isn’t affiliated with, endorsed by or connected to William Bengston, Bengston Research, the Bengston Energy Healing Method® or anyone else. The information here is a summary for general interest, and may contain mistakes.</p>
     <p><b>This app is not medical advice and does not diagnose, treat or cure anything.</b> If you have a health concern, please see a doctor or other qualified health professional, and never delay or stop medical treatment because of anything here. In an emergency, call your local emergency number.</p>
-    <p>“Bengston Energy Healing Method” is a registered trademark of its owner and is used here only to identify the source of the idea. For the authentic method, training and workshops, visit <a href="https://bengstonresearch.com/" target="_blank" rel="noopener">bengstonresearch.com</a>.</p>
+    <p>“Image Cycling” and “The Bengston Energy Healing Method” are registered trademarks of L&nbsp;&amp;&nbsp;B Consulting, Inc. This app is not affiliated with or endorsed by them. For the authentic method, training and workshops, visit <a href="https://bengstonresearch.com/" target="_blank" rel="noopener">bengstonresearch.com</a>.</p>
     <p>This app is provided free, as is, without warranty of any kind. You use it at your own risk, and the author accepts no liability for any outcome of its use.</p>
     <p>The app flashes images rapidly. If you have epilepsy or photosensitivity, don’t use fast speeds, and stop if you feel unwell.</p>
     <p>The app stores nothing on any server and collects no data. Your images stay on your device.</p>
@@ -959,14 +959,14 @@
   });
   $('exportBtn').onclick = async () => {
     const data = {
-      app: 'image-cycling', version: 1, exported: new Date().toISOString(), settings, stats, trained,
+      app: 'flipbook-mind', version: 1, exported: new Date().toISOString(), settings, stats, trained,
       items: await Promise.all(items.map(async it => ({
         text: it.text || '', color: it.color, image: it.blob ? await blobToDataURL(it.blob) : null
       })))
     };
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
-    a.download = `image-cycling-backup-${dayStr(0)}.json`;
+    a.download = `flipbook-mind-backup-${dayStr(0)}.json`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
     ls.set('ic-backup', Date.now()); renderStoreTip();
@@ -978,8 +978,9 @@
     let data;
     try {
       data = JSON.parse(await f.text());
-      if (data.app !== 'image-cycling' || !Array.isArray(data.items)) throw 0;
-    } catch { return toast('That file isn’t an Image Cycling backup.'); }
+      // Backups made before the rename say 'image-cycling'.
+      if (!['flipbook-mind', 'image-cycling'].includes(data.app) || !Array.isArray(data.items)) throw 0;
+    } catch { return toast('That file isn’t a Flipbook Mind backup.'); }
     let mode = 'replace';
     if (items.length) {
       mode = await ask('Restore backup',

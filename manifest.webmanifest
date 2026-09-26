@@ -1,7 +1,7 @@
 {
-  "name": "Image Cycling",
-  "short_name": "Image Cycling",
-  "description": "A goals app inspired by William Bengston’s image cycling.",
+  "name": "Flipbook Mind",
+  "short_name": "Flipbook Mind",
+  "description": "A free rapid-imaging practice tool inspired by William Bengston’s Image Cycling® technique.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
