@@ -1,6 +1,6 @@
-# Image Cycling
+# Flipbook Mind
 
-A web app inspired by William Bengston’s image cycling.
+A free rapid-imaging practice tool inspired by William Bengston’s Image Cycling® technique.
 
 ## Two modes
 
@@ -30,3 +30,9 @@ Serve the folder over HTTP (e.g. `npx http-server .`) or use the hosted version 
 When you change the app, bump `VERSION` in `sw.js` so installed copies pick up the new files.
 
 > ⚠️ Fast cycling creates flashing images. The app warns before cycling faster than 3 images per second. If you are sensitive to flashing lights, use a slower speed.
+
+## Trademarks
+
+“Image Cycling” and “The Bengston Energy Healing Method” are registered trademarks of L & B Consulting, Inc. This project is not affiliated with or endorsed by them. For the authentic method, training and workshops, visit [bengstonresearch.com](https://bengstonresearch.com/).
+
+Internal storage keys (`image-cycling` database, `ic-` settings) keep their old names on purpose, so existing lists carry over.
