@@ -18,7 +18,7 @@ Flipbook Mind is a free rapid-imaging practice tool inspired by William Bengston
 - The first time the app opens, it shows a photosensitivity warning that must be acknowledged before use.
 - Speed is capped at 3 images per second (the WCAG 2.3.1 flash threshold). Faster speeds, up to 10 per second, are only available after turning on **Allow fast speeds** and confirming a warning. The opt-in is never restored from a backup file.
 - If the device’s Reduce Motion setting is on, speed is limited to 1 image per second and fast speeds can’t be turned on.
-- Images crossfade (120 ms, shorter at fast speeds so each fade finishes before the next image) instead of cutting hard, text cards avoid saturated reds, and full screen is off by default.
+- By default each new image fades in over the previous one (120 ms, shorter at fast speeds) without the screen dipping dark; **Fade between images** can be switched off for instant changes. Text cards avoid saturated reds, and full screen is off by default.
 - Tapping or clicking anywhere during a session stops it straight away.
 
 ## Privacy
