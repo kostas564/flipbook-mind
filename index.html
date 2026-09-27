@@ -387,6 +387,9 @@
   dialog p { color: var(--muted); margin: 0 0 18px; }
   dialog input[type="text"] { width: 100%; }
   dialog .row.end { justify-content: flex-end; margin-top: 18px; }
+  dialog ol { padding-left: 20px; color: var(--muted); margin: 0 0 14px; }
+  dialog ol li { margin: 6px 0; }
+  dialog ol b { color: var(--text); font-weight: 600; }
   .edprev { width: 150px; aspect-ratio: 1; margin: 0 auto 18px; }
   .edprev .tile { width: 100%; height: 100%; }
   .edmove { justify-content: space-between; margin: 4px 0 14px; }
@@ -440,7 +443,7 @@
       <div class="row">
         <button id="installBtn" class="small" hidden>Install app</button>
         <button id="exportBtn" class="small" hidden>Back up</button>
-        <label class="btn small" for="importIn">Restore</label>
+        <button id="restoreBtn" class="small">Restore</button>
         <input id="importIn" type="file" accept="application/json,.json">
       </div>
     </div>
@@ -614,6 +617,16 @@
   <h2 id="warnTitle">⚠️ Flashing images</h2>
   <p id="warnMsg">This app displays rapidly changing images. If you have epilepsy or are sensitive to flashing lights, use slow speeds or don’t use the app. Stop immediately if you feel unwell.</p>
   <div class="row end"><button id="ackBtn" class="primary">I understand</button></div>
+</dialog>
+
+<dialog id="helpDlg" aria-labelledby="helpTitle">
+  <h2 id="helpTitle"></h2>
+  <ol id="helpSteps"></ol>
+  <p id="helpNote"></p>
+  <div class="row end">
+    <button id="helpCancel">Cancel</button>
+    <button id="helpOk" class="primary"></button>
+  </div>
 </dialog>
 
 <div id="toast" role="status" aria-live="polite"></div>
@@ -964,20 +977,75 @@
   const blobToDataURL = b => new Promise((res, rej) => {
     const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(b);
   });
-  $('exportBtn').onclick = async () => {
+  // Short how-to windows for Back up and Restore. The action button runs straight from its own
+  // click, so the share menu and the file picker open reliably (iPhone insists on that).
+  const platform = () => isIOS ? 'ios' : /Android/.test(navigator.userAgent) ? 'android' : 'desktop';
+  function guide(title, steps, note, okLabel, onOk) {
+    $('helpTitle').textContent = title;
+    $('helpSteps').replaceChildren(...steps.map(t => { const li = document.createElement('li'); li.innerHTML = t; return li; }));
+    $('helpNote').textContent = note;
+    $('helpOk').textContent = okLabel;
+    $('helpOk').disabled = false;
+    $('helpOk').onclick = onOk;
+    $('helpDlg').showModal();
+  }
+  $('helpCancel').onclick = () => $('helpDlg').close();
+  const backupName = () => `flipbook-mind-backup-${dayStr(0)}.json`;
+  async function buildBackup() {
     const data = {
       app: 'flipbook-mind', version: 1, exported: new Date().toISOString(), settings, stats, trained,
       items: await Promise.all(items.map(async it => ({
         text: it.text || '', color: it.color, image: it.blob ? await blobToDataURL(it.blob) : null
       })))
     };
+    return new File([JSON.stringify(data)], backupName(), { type: 'application/json' });
+  }
+  function download(file) {
     const a = document.createElement('a');
-    a.href = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: 'application/json' }));
-    a.download = `flipbook-mind-backup-${dayStr(0)}.json`;
+    a.href = URL.createObjectURL(file);
+    a.download = file.name;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 5000);
+  }
+  function backupDone() {
+    $('helpDlg').close();
     ls.set('ic-backup', Date.now()); renderStoreTip();
     toast('Backup saved. Keep the file somewhere safe.');
+  }
+  $('exportBtn').onclick = async () => {
+    const name = `<b>${backupName()}</b>`;
+    const steps = {
+      ios: ['Tap <b>Save backup</b>.', 'In the menu that opens, choose <b>Save to Files</b>.', 'Pick a folder, such as iCloud Drive or On My iPhone, and tap <b>Save</b>.'],
+      android: ['Tap <b>Save backup</b>.', `The file ${name} is saved to your <b>Downloads</b> folder.`, 'For extra safety, copy it to Google Drive or another safe place.'],
+      desktop: ['Click <b>Save backup</b>.', `The file ${name} is saved to your <b>Downloads</b> folder (your browser may ask where to save it).`, 'For extra safety, copy it to cloud storage or a USB stick.']
+    }[platform()];
+    let backupFile = null;
+    guide('Back up your list', steps,
+      'The file contains your images, so keep it private. To bring your list back later, tap Restore and choose this file.',
+      'Save backup', async () => {
+        const file = backupFile;
+        if (!file) return;
+        if (isIOS && navigator.canShare && navigator.canShare({ files: [file] })) {
+          try { await navigator.share({ files: [file] }); }
+          catch (e) { if (e.name === 'AbortError') return; download(file); }
+        } else download(file);
+        backupDone();
+      });
+    // Prepare the file while the instructions are read, so saving happens straight from the tap.
+    $('helpOk').disabled = true; $('helpOk').textContent = 'Preparing…';
+    backupFile = await buildBackup();
+    $('helpOk').disabled = false; $('helpOk').textContent = 'Save backup';
+  };
+  $('restoreBtn').onclick = () => {
+    const find = 'It’s named <b>flipbook-mind-backup-</b> followed by a date (older backups start with <b>image-cycling-backup-</b>).';
+    const steps = {
+      ios: ['Tap <b>Choose file</b>, then <b>Browse</b> if you see it.', `Find your backup file, for example in Downloads or iCloud Drive. ${find}`, 'Tap the file to restore it.'],
+      android: ['Tap <b>Choose file</b>.', `Find your backup file, usually in <b>Downloads</b>. ${find}`, 'Tap the file to restore it.'],
+      desktop: ['Click <b>Choose file</b>.', `Find your backup file, usually in <b>Downloads</b>. ${find}`, 'Select it and click <b>Open</b>.']
+    }[platform()];
+    guide('Restore a backup', steps,
+      items.length ? 'You already have items, so you’ll be asked whether to replace your list or add the backup’s items to it.' : 'Your list, settings and progress will come back as they were when you saved the backup.',
+      'Choose file', () => { $('helpDlg').close(); $('importIn').click(); });
   };
   $('importIn').onchange = async e => {
     const f = e.target.files[0]; e.target.value = '';
@@ -1285,6 +1353,8 @@
   function show(kids) {
     const stage = $('stage'), cur = stage.querySelector('.layer:not(.out)');
     if (cur && cur.firstChild === kids[0]) return; // same image again: nothing changes
+    // A layer already fading out has finished by now (fades last at most 60% of an image's time).
+    stage.querySelectorAll('.layer.out').forEach(l => l.remove());
     if (cur) { cur.classList.add('out'); setTimeout(() => cur.remove(), S.fade + 40); }
     const layer = document.createElement('div');
     layer.className = 'layer';
