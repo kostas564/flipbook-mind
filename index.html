@@ -704,8 +704,11 @@
   let items = [];
   const urls = new Map();
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const DEFAULTS = { speed: reduceMotion ? 1000 : 500, dur: 3, shuffle: true, caps: false, chime: true, fs: false, fast: false, pace: 1000, tdur: 2, vol: 50, mode: 'cycle' };
+  const DEFAULTS = { speed: reduceMotion ? 1000 : 500, dur: 3, shuffle: false, caps: false, chime: true, fs: false, fast: false, pace: 1000, tdur: 2, vol: 50, mode: 'cycle' };
   const settings = Object.assign({}, DEFAULTS, ls.get('ic-settings', {}));
+  // Shuffle used to be on by default and every install saved that. Images now play in list order
+  // unless shuffle is chosen, so switch it off once for existing installs.
+  if (!ls.get('ic-order-default', false)) { settings.shuffle = false; ls.set('ic-order-default', true); }
   // Highest image rate (per second) and fastest training pace (ms) currently allowed.
   const limits = () => reduceMotion ? { rate: 1, pace: 1000 }
     : settings.fast ? { rate: FAST_RATE, pace: 300 } : { rate: SAFE_RATE, pace: 350 };
