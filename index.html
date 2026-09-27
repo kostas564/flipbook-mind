@@ -270,25 +270,7 @@
   #session.on { display: flex; }
   #stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
   /* Every image gets the same square frame as the text cards: shown whole, scaled up or down to fit. */
-  #stage .layer {
-    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    animation: xfade-in var(--fade, 120ms) ease-out both;
-  }
-  #stage .layer.out { animation: xfade-out var(--fade, 120ms) ease-in both; }
-  @keyframes xfade-in { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes xfade-out { from { opacity: 1; } to { opacity: 0; } }
-  #stage img, #stage canvas { width: min(80vw, 80vh); height: min(80vw, 80vh); object-fit: contain; }
-  #stage .textcard {
-    width: min(80vw, 80vh); aspect-ratio: 1; border-radius: 32px; display: flex;
-    align-items: center; justify-content: center; text-align: center; padding: 24px;
-    color: #fff; font-family: var(--display); font-size: clamp(1.5rem, 5vw, 3.2rem); font-weight: 600;
-  }
-  #stage .imagine {
-    width: min(60vw, 60vh); aspect-ratio: 1; border-radius: 50%;
-    background: radial-gradient(circle, rgba(139, 92, 246, 0.22) 0%, rgba(236, 72, 153, 0.08) 45%, transparent 70%);
-    display: flex; align-items: center; justify-content: center;
-    color: rgba(255,255,255,0.35); font-size: 0.95rem; letter-spacing: 0.35em; text-transform: uppercase;
-  }
+  #stage #view { width: min(80vw, 80vh); height: min(80vw, 80vh); }
   #stage .free {
     color: rgba(255,255,255,0.6); text-align: center; padding: 24px; max-width: 480px;
     font-family: var(--display); font-size: 1.4rem; font-style: italic;
@@ -1336,77 +1318,179 @@
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
+  // Every item is prepared once, before the session, as a square picture at its on-screen size:
+  // photos are unpacked and fitted, text cards and the "imagine" circle are drawn. During the session
+  // they are painted onto one fixed canvas, so an image change is a quick redraw with nothing added
+  // to or removed from the page (iPhone Safari could hitch when elements and fades were created
+  // several times a second). Kept between sessions; redone if an item or the screen size changes.
   let nodes = new Map();
-  // Photos are unpacked once and drawn at their on-screen size before a session starts, so
-  // flipping never waits for an image to decode (Safari also throws decoded images away, which
-  // made cycling pause now and then). Kept between sessions; redone if an image or the size changes.
   const frames = new Map();
   const framePx = () => Math.min(1200, Math.round(Math.min(innerWidth, innerHeight) * 0.8 * Math.min(devicePixelRatio || 1, 2)));
-  async function frameFor(it, px) {
-    const f = frames.get(it.id);
-    if (f && f.px === px && f.blob === it.blob) return f.el;
-    let el;
-    try {
-      const bmp = await createImageBitmap(it.blob);
-      const k = Math.min(px / bmp.width, px / bmp.height), w = Math.round(bmp.width * k), h = Math.round(bmp.height * k);
-      el = document.createElement('canvas');
-      el.width = el.height = px;
-      const g = el.getContext('2d');
-      g.imageSmoothingQuality = 'high';
-      g.drawImage(bmp, (px - w) / 2, (px - h) / 2, w, h);
-      if (bmp.close) bmp.close();
-      el.setAttribute('role', 'img');
-    } catch {
-      // Fall back to a plain image, decoded up front.
-      el = new Image(); el.src = urlFor(it);
-      try { await el.decode(); } catch {}
+  const cssFrame = () => Math.min(innerWidth, innerHeight) * 0.8;
+  function blankFrame(px) {
+    const c = document.createElement('canvas');
+    c.width = c.height = px;
+    return c;
+  }
+  async function photoFrame(it, px) {
+    const c = blankFrame(px), g = c.getContext('2d');
+    let src;
+    try { src = await createImageBitmap(it.blob); }
+    catch { src = new Image(); src.src = urlFor(it); try { await src.decode(); } catch { return c; } }
+    const w0 = src.width || src.naturalWidth, h0 = src.height || src.naturalHeight;
+    const k = Math.min(px / w0, px / h0), w = Math.round(w0 * k), h = Math.round(h0 * k);
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(src, (px - w) / 2, (px - h) / 2, w, h);
+    if (src.close) src.close();
+    return c;
+  }
+  function wrapLines(g, text, maxW) {
+    const lines = [];
+    for (const para of text.split('\n')) {
+      let line = '';
+      for (const word of para.split(/\s+/)) {
+        const t = line ? line + ' ' + word : word;
+        if (line && g.measureText(t).width > maxW) { lines.push(line); line = word; } else line = t;
+      }
+      lines.push(line);
     }
-    frames.set(it.id, { px, blob: it.blob, el });
+    return lines;
+  }
+  function textFrame(it, px) {
+    const c = blankFrame(px), g = c.getContext('2d'), k = px / cssFrame();
+    const [c1, c2] = GRADIENTS[(it.color || 0) % GRADIENTS.length];
+    const grad = g.createLinearGradient(0, 0, px, px);
+    grad.addColorStop(0, c1); grad.addColorStop(1, c2);
+    g.fillStyle = grad;
+    g.beginPath();
+    if (g.roundRect) g.roundRect(0, 0, px, px, 32 * k); else g.rect(0, 0, px, px);
+    g.fill();
+    const size = Math.min(51.2, Math.max(24, innerWidth * 0.05)) * k, pad = 24 * k;
+    g.font = `600 ${size}px "Fraunces Variable", Fraunces, Georgia, serif`;
+    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    const lines = wrapLines(g, it.text || "", px - pad * 2), lh = size * 1.55;
+    lines.forEach((l, i) => g.fillText(l, px / 2, px / 2 + (i - (lines.length - 1) / 2) * lh));
+    return c;
+  }
+  function imagineFrame(px) {
+    const c = blankFrame(px), g = c.getContext('2d'), k = px / cssFrame();
+    const r = px * 0.375, R = r * Math.SQRT2; // the 60vmin circle inside the 80vmin frame
+    const grad = g.createRadialGradient(px / 2, px / 2, 0, px / 2, px / 2, R);
+    grad.addColorStop(0, 'rgba(139, 92, 246, 0.22)');
+    grad.addColorStop(0.45, 'rgba(236, 72, 153, 0.08)');
+    grad.addColorStop(0.7, 'rgba(236, 72, 153, 0)');
+    g.fillStyle = grad; g.beginPath(); g.arc(px / 2, px / 2, r, 0, Math.PI * 2); g.fill();
+    const size = 15.2 * k, gap = size * 0.35, word = 'IMAGINE';
+    g.font = `400 ${size}px "Inter Variable", Inter, sans-serif`;
+    g.fillStyle = 'rgba(255, 255, 255, 0.35)'; g.textBaseline = 'middle';
+    const widths = [...word].map(ch => g.measureText(ch).width);
+    let x = (px - widths.reduce((a, b) => a + b, 0) - gap * (word.length - 1)) / 2;
+    [...word].forEach((ch, i) => { g.fillText(ch, x, px / 2); x += widths[i] + gap; });
+    return c;
+  }
+  async function frameFor(it, px) {
+    const key = it.blob ? it.blob : `${it.text}|${it.color}|${innerWidth}`;
+    const f = frames.get(it.id);
+    if (f && f.px === px && f.key === key) return f.el;
+    const el = it.blob ? await photoFrame(it, px) : textFrame(it, px);
+    frames.set(it.id, { px, key, el });
     return el;
   }
+  let imagine = null;
   async function buildNodes() {
     nodes = new Map();
     const px = framePx();
+    try { await Promise.all([document.fonts.load('600 40px "Fraunces Variable"'), document.fonts.load('400 16px "Inter Variable"')]); } catch {}
     for (const id of [...frames.keys()]) if (!items.some(it => it.id === id)) frames.delete(id);
-    await Promise.all(items.map(async it => {
-      let el;
-      if (it.blob) { el = await frameFor(it, px); el.setAttribute('aria-label', it.text || ''); if (el.tagName === 'IMG') el.alt = it.text || ''; }
-      else { el = document.createElement('div'); el.className = 'textcard'; el.style.background = gradient(it); el.textContent = it.text; }
-      nodes.set(it.id, el);
-    }));
+    await Promise.all(items.map(async it => nodes.set(it.id, await frameFor(it, px))));
+    if (!imagine || imagine.width !== px) imagine = imagineFrame(px);
+    V.px = px;
   }
-  const imagineNode = (() => { const d = document.createElement('div'); d.className = 'imagine'; d.textContent = 'imagine'; return d; })();
 
-  // Crossfade into the next image instead of a hard cut, to soften each change.
-  function show(kids) {
-    const stage = $('stage'), cur = stage.querySelector('.layer:not(.out)');
-    if (cur && cur.firstChild === kids[0]) return; // same image again: nothing changes
-    // A layer already fading out has finished by now (fades last at most 60% of an image's time).
-    stage.querySelectorAll('.layer.out').forEach(l => l.remove());
-    if (cur) { cur.classList.add('out'); setTimeout(() => cur.remove(), S.fade + 40); }
-    const layer = document.createElement('div');
-    layer.className = 'layer';
-    layer.append(...kids);
-    stage.appendChild(layer);
+  // ---- The drawing surface: one canvas, crossfading between prepared pictures ----
+  const V = { canvas: null, g: null, px: 0, cur: null, from: null, t0: 0, fading: false };
+  const stageLabel = document.createElement('div'); stageLabel.className = 'label';
+  const stageCaption = document.createElement('div'); stageCaption.className = 'caption';
+  function resetStage() {
+    if (!V.canvas) {
+      V.canvas = document.createElement('canvas');
+      V.canvas.id = 'view'; V.canvas.setAttribute('role', 'img');
+      V.g = V.canvas.getContext('2d');
+    }
+    V.canvas.width = V.canvas.height = V.px || framePx();
+    V.cur = V.from = null; V.fading = false;
+    V.canvas.dataset.changes = 0;
+    stageLabel.textContent = stageCaption.textContent = '';
+    $('stage').replaceChildren(V.canvas, stageLabel, stageCaption);
+  }
+  function show(frame, label, caption, alt) {
+    stageLabel.textContent = label || '';
+    stageCaption.textContent = caption || '';
+    V.canvas.setAttribute('aria-label', alt || '');
+    if (frame === V.cur) return; // same picture again: nothing changes
+    V.from = V.fading ? null : V.cur; // a fade still running is simply replaced
+    V.cur = frame; V.t0 = performance.now(); V.fading = true;
+    V.canvas.dataset.changes = +V.canvas.dataset.changes + 1;
+    diag.change(V.t0);
+    paint(V.t0);
+  }
+  function paint(now) {
+    if (!V.fading) return;
+    const g = V.g, W = V.canvas.width, a = S.fade ? Math.min(1, (now - V.t0) / S.fade) : 1;
+    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
+    g.clearRect(0, 0, W, W);
+    if (a < 1 && V.from) { g.globalAlpha = 1 - a; g.drawImage(V.from, 0, 0, W, W); g.globalCompositeOperation = 'lighter'; }
+    g.globalAlpha = a; g.drawImage(V.cur, 0, 0, W, W);
+    if (a >= 1) V.fading = false;
+  }
+
+  // ---- Optional timing check (turn on by tapping the "sessions" counter five times) ----
+  const diag = {
+    on: ls.get('ic-diag', false) === true, frames: [], late: [], last: 0,
+    start() { this.frames = []; this.late = []; this.last = 0; },
+    frame(now) { if (this.on && this.last) this.frames.push(now - this.last); this.last = now; },
+    change(now) {
+      if (this.on && S.cfg && !S.cfg.free) this.late.push(now - (S.t0 + S.pausedMs + S.k * S.cfg.interval));
+    },
+    report() {
+      if (!this.on || !this.frames.length) return '';
+      const f = this.frames, maxF = Math.max(...f), over = f.filter(x => x > 100).length;
+      const l = this.late, maxL = l.length ? Math.max(...l) : 0;
+      return `Timing check: ${l.length} image changes, the latest one ${Math.round(maxL)} ms late. ` +
+        `Longest gap between screen updates ${Math.round(maxF)} ms; ${over} over 100 ms (normal is about 17 ms).`;
+    }
+  };
+  {
+    let taps = 0, tt = 0;
+    $('statTotal').parentElement.addEventListener('click', () => {
+      clearTimeout(tt); tt = setTimeout(() => { taps = 0; }, 1500);
+      if (++taps < 5) return;
+      taps = 0; diag.on = !diag.on; ls.set('ic-diag', diag.on);
+      toast(diag.on ? 'Timing check on. It shows after each session.' : 'Timing check off.');
+    });
   }
   function step() {
     const c = S.cfg, n = S.order.length;
     const round = Math.floor(S.k / n);
-    if (round !== S.round) { S.round = round; if (c.shuffle) S.order = shuffle(S.order.slice()); }
+    if (round !== S.round) {
+      S.round = round;
+      if (c.shuffle) {
+        S.order = shuffle(S.order.slice());
+        // Never start a round with the image that just ended the last one: it would stay on screen
+        // for two turns, which looks like cycling has paused.
+        if (n > 1 && S.order[0] === S.lastItem) {
+          const j = 1 + Math.floor(Math.random() * (n - 1));
+          [S.order[0], S.order[j]] = [S.order[j], S.order[0]];
+        }
+      }
+    }
     const pos = S.k % n, it = S.order[pos];
+    S.lastItem = it;
     const vis = c.visible(S.k);
-    const kids = [vis ? nodes.get(it.id) : imagineNode];
-    if (vis && c.labels && it.blob && it.text) {
-      const lab = document.createElement('div');
-      lab.className = 'label'; lab.textContent = it.text;
-      kids.push(lab);
-    }
-    if (c.caption) {
-      const cap = document.createElement('div');
-      cap.className = 'caption'; cap.textContent = `${pos + 1} of ${n}`;
-      kids.push(cap);
-    }
-    show(kids);
+    show(vis ? nodes.get(it.id) : imagine,
+      vis && c.labels && it.blob && it.text ? it.text : '',
+      c.caption ? `${pos + 1} of ${n}` : '',
+      vis ? it.text || '' : 'Imagine');
     if (c.tick) tick(vis);
     S.k++;
   }
@@ -1421,8 +1505,9 @@
     if (due - S.k > 1) S.k = due - 1; // fell behind (e.g. tab hidden): skip ahead, don't burst
     while (S.k < due) step();
   }
-  function loop() {
+  function loop(now) {
     pump();
+    if (now) { paint(now); diag.frame(now); }
     if (S.running) S.raf = requestAnimationFrame(loop);
   }
 
@@ -1434,11 +1519,10 @@
     S.cfg = cfg; S.level = level || null;
     // 120 ms crossfade, shortened at fast speeds so each fade finishes before the next image.
     S.fade = Math.round(Math.min(120, (cfg.interval || 1000) * 0.6));
-    $('stage').style.setProperty('--fade', S.fade + 'ms');
     const ov = $('session');
     ov.classList.add('on');
     for (const id of ['done', 'quiz', 'paused']) $(id).style.display = 'none';
-    $('stage').replaceChildren(); $('bar').style.width = '0';
+    V.px = 0; resetStage(); $('bar').style.width = '0';
     const touch = matchMedia('(hover: none)').matches;
     $('hint').textContent = (cfg.hint ? cfg.hint + ' · ' : '') + (touch ? 'Tap anywhere to stop' : 'Click or Esc to stop · Space to pause');
     $('stopBtn').hidden = false;
@@ -1455,6 +1539,7 @@
     }
     await ready;
     if (run !== S.run) return;
+    resetStage(); V.canvas.dataset.fade = S.fade; diag.start();
     S.counting = false;
     $('countdown').textContent = '';
     setTimeout(() => { if (run === S.run && S.running) $('hint').style.opacity = 0; }, cfg.hint ? 5000 : 2500);
@@ -1512,6 +1597,8 @@
       $('doneMsg').textContent = `You cycled ${items.length} goals for ${settings.dur} minute${settings.dur > 1 ? 's' : ''}. Now let it go and get on with your day.`;
       $('nextLevel').hidden = true;
     }
+    const timing = diag.report();
+    if (timing) $('doneMsg').textContent += ' ' + timing;
     $('done').style.display = 'flex';
   }
   // A history entry per session, so the phone's Back button or back-swipe ends the session
