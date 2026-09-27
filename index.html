@@ -1169,7 +1169,7 @@
       } else settings.fast = false;
       bindSettings();
     };
-    $('vol').onchange = () => { audio(); tick(false); };
+    $('vol').onchange = () => { audio(true); tick(false); setTimeout(() => { if (!S.running) soundSession(false); }, 400); };
     upd();
   }
   const TABS = { cycle: 'tabCycle', train: 'tabTrain' };
@@ -1272,8 +1272,23 @@
 
   // ---------- Audio ----------
   let actx = null;
-  function audio() {
-    try { if (!actx) actx = new (window.AudioContext || window.webkitAudioContext)(); if (actx.state === 'suspended') actx.resume(); } catch {}
+  // iPhone mutes web audio when silent mode is on, unless the page says it plays sound on purpose
+  // (iOS 17+). That also pauses music from other apps, so it's only switched on while a training
+  // session that relies on its ticks and chime is running, and switched back afterwards.
+  function soundSession(on) {
+    try { if (navigator.audioSession) navigator.audioSession.type = on ? 'playback' : 'auto'; } catch {}
+  }
+  function audio(loud) {
+    if (loud) soundSession(true);
+    try {
+      if (!actx) {
+        actx = new (window.AudioContext || window.webkitAudioContext)();
+        // Older iPhones only allow sound after something has played during a tap: play one silent sample.
+        const src = actx.createBufferSource();
+        src.buffer = actx.createBuffer(1, 1, 22050); src.connect(actx.destination); src.start(0);
+      }
+      if (actx.state !== 'running') actx.resume(); // also recovers iOS's "interrupted" state
+    } catch {}
     return actx;
   }
   function tick(soft) {
@@ -1514,7 +1529,7 @@
   async function runSession(cfg, level) {
     if (items.length < 2 || !acknowledged()) return;
     const run = ++S.run;
-    audio();
+    audio(!!(cfg.tick || cfg.free));
     const ready = buildNodes(); // prepared while the countdown runs
     S.cfg = cfg; S.level = level || null;
     // 120 ms crossfade, shortened at fast speeds so each fade finishes before the next image.
@@ -1612,6 +1627,7 @@
   addEventListener('popstate', () => { if ($('session').classList.contains('on')) exit(true); });
   function exit(fromBack) {
     if (!$('session').classList.contains('on')) return;
+    soundSession(false);
     if (!fromBack && history.state && history.state.icSession) { try { history.back(); } catch {} }
     $('stopBtn').hidden = true;
     stopTimers();
