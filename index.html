@@ -270,12 +270,11 @@
   #session.on { display: flex; }
   #stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
   /* Every image gets the same square frame as the text cards: shown whole, scaled up or down to fit. */
-  #stage #view { position: relative; width: min(80vw, 80vh); height: min(80vw, 80vh); }
-  #stage #view .slot {
-    position: absolute; inset: 0; width: 100%; height: 100%;
-    opacity: 0; transition: opacity var(--fade, 120ms) linear;
-  }
+  /* isolation keeps the slots' stacking inside the picture, below the pause card and buttons */
+  #stage #view { position: relative; isolation: isolate; width: min(80vw, 80vh); height: min(80vw, 80vh); }
+  #stage #view .slot { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; z-index: 1; }
   #stage #view .slot.on { opacity: 1; }
+  #stage #view .slot.top { z-index: 2; transition: opacity var(--fade, 120ms) linear; }
   #stage .free {
     color: rgba(255,255,255,0.6); text-align: center; padding: 24px; max-width: 480px;
     font-family: var(--display); font-size: 1.4rem; font-style: italic;
@@ -459,6 +458,7 @@
         </div>
         <div>
           <label class="check"><input id="shuffle" type="checkbox"> Shuffle every round</label>
+          <label class="check"><input id="xfade" type="checkbox"> Fade between images</label>
           <label class="check"><input id="caps" type="checkbox"> Show captions</label>
           <label class="check"><input id="chime" type="checkbox"> Soft chime at the end</label>
           <label class="check"><input id="fs" type="checkbox"> Full screen</label>
@@ -709,7 +709,7 @@
   let items = [];
   const urls = new Map();
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const DEFAULTS = { speed: reduceMotion ? 1000 : 500, dur: 3, shuffle: false, caps: false, chime: true, fs: false, fast: false, pace: 1000, tdur: 2, vol: 50, mode: 'cycle' };
+  const DEFAULTS = { speed: reduceMotion ? 1000 : 500, dur: 3, shuffle: false, xfade: true, caps: false, chime: true, fs: false, fast: false, pace: 1000, tdur: 2, vol: 50, mode: 'cycle' };
   const settings = Object.assign({}, DEFAULTS, ls.get('ic-settings', {}));
   // Shuffle used to be on by default and every install saved that. Images now play in list order
   // unless shuffle is chosen, so switch it off once for existing installs.
@@ -1161,7 +1161,7 @@
       $(k).value = settings[k];
       $(k).oninput = e => { settings[k] = +e.target.value; upd(); };
     }
-    for (const k of ['shuffle', 'caps', 'chime', 'fs']) {
+    for (const k of ['shuffle', 'xfade', 'caps', 'chime', 'fs']) {
       $(k).checked = settings[k];
       $(k).onchange = e => { settings[k] = e.target.checked; upd(); };
     }
@@ -1445,7 +1445,8 @@
       V.box.append(...V.slots);
     }
     const px = V.px || framePx();
-    for (const c of V.slots) { c.width = c.height = px; c.classList.remove('on'); }
+    clearTimeout(V.hide);
+    for (const c of V.slots) { c.width = c.height = px; c.classList.remove('on', 'top'); }
     V.cur = null; V.front = 0;
     V.box.dataset.changes = 0;
     V.box.style.setProperty('--fade', (S.fade || 0) + 'ms');
@@ -1459,9 +1460,16 @@
     if (frame === V.cur) return; // same picture again: nothing changes
     const back = V.slots[1 - V.front], front = V.slots[V.front];
     const g = back.getContext('2d');
-    g.clearRect(0, 0, back.width, back.height);
+    // Black behind every picture, so the incoming one is fully opaque and the change never dips dark.
+    g.fillStyle = '#000'; g.fillRect(0, 0, back.width, back.height);
     g.drawImage(frame, 0, 0, back.width, back.height);
-    back.classList.add('on'); front.classList.remove('on');
+    // The new picture fades in on top while the old one stays fully visible underneath,
+    // then the old one is hidden.
+    back.classList.remove('on'); back.classList.add('top');
+    front.classList.remove('top');
+    back.classList.add('on');
+    clearTimeout(V.hide);
+    V.hide = setTimeout(() => front.classList.remove('on'), S.fade + 30);
     V.front = 1 - V.front; V.cur = frame;
     V.box.dataset.changes = +V.box.dataset.changes + 1;
     diag.change(performance.now());
@@ -1541,7 +1549,7 @@
     const ready = buildNodes(); // prepared while the countdown runs
     S.cfg = cfg; S.level = level || null;
     // 120 ms crossfade, shortened at fast speeds so each fade finishes before the next image.
-    S.fade = Math.round(Math.min(120, (cfg.interval || 1000) * 0.6));
+    S.fade = settings.xfade ? Math.round(Math.min(120, (cfg.interval || 1000) * 0.6)) : 0;
     const ov = $('session');
     ov.classList.add('on');
     for (const id of ['done', 'quiz', 'paused']) $(id).style.display = 'none';
