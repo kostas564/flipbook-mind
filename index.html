@@ -270,7 +270,12 @@
   #session.on { display: flex; }
   #stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
   /* Every image gets the same square frame as the text cards: shown whole, scaled up or down to fit. */
-  #stage #view { width: min(80vw, 80vh); height: min(80vw, 80vh); }
+  #stage #view { position: relative; width: min(80vw, 80vh); height: min(80vw, 80vh); }
+  #stage #view .slot {
+    position: absolute; inset: 0; width: 100%; height: 100%;
+    opacity: 0; transition: opacity var(--fade, 120ms) linear;
+  }
+  #stage #view .slot.on { opacity: 1; }
   #stage .free {
     color: rgba(255,255,255,0.6); text-align: center; padding: 24px; max-width: 480px;
     font-family: var(--display); font-size: 1.4rem; font-style: italic;
@@ -704,8 +709,11 @@
   let items = [];
   const urls = new Map();
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const DEFAULTS = { speed: reduceMotion ? 1000 : 500, dur: 3, shuffle: true, caps: false, chime: true, fs: false, fast: false, pace: 1000, tdur: 2, vol: 50, mode: 'cycle' };
+  const DEFAULTS = { speed: reduceMotion ? 1000 : 500, dur: 3, shuffle: false, caps: false, chime: true, fs: false, fast: false, pace: 1000, tdur: 2, vol: 50, mode: 'cycle' };
   const settings = Object.assign({}, DEFAULTS, ls.get('ic-settings', {}));
+  // Shuffle used to be on by default and every install saved that. Images now play in list order
+  // unless shuffle is chosen, so switch it off once for existing installs.
+  if (!ls.get('ic-order-default', false)) { settings.shuffle = false; ls.set('ic-order-default', true); }
   // Highest image rate (per second) and fastest training pace (ms) currently allowed.
   const limits = () => reduceMotion ? { rate: 1, pace: 1000 }
     : settings.fast ? { rate: FAST_RATE, pace: 300 } : { rate: SAFE_RATE, pace: 350 };
@@ -1422,41 +1430,41 @@
     V.px = px;
   }
 
-  // ---- The drawing surface: one canvas, crossfading between prepared pictures ----
-  const V = { canvas: null, g: null, px: 0, cur: null, from: null, t0: 0, fading: false };
+  // ---- The drawing surface: two fixed picture slots ----
+  // Each picture is drawn once, into the hidden slot, when it's due; a plain CSS opacity fade then
+  // swaps the slots. Nothing is added to or removed from the page while cycling, and nothing is
+  // redrawn frame by frame (iPhone Safari showed flashes with per-frame canvas blending).
+  const V = { box: null, slots: [], front: 0, px: 0, cur: null };
   const stageLabel = document.createElement('div'); stageLabel.className = 'label';
   const stageCaption = document.createElement('div'); stageCaption.className = 'caption';
   function resetStage() {
-    if (!V.canvas) {
-      V.canvas = document.createElement('canvas');
-      V.canvas.id = 'view'; V.canvas.setAttribute('role', 'img');
-      V.g = V.canvas.getContext('2d');
+    if (!V.box) {
+      V.box = document.createElement('div');
+      V.box.id = 'view'; V.box.setAttribute('role', 'img');
+      V.slots = [0, 1].map(() => { const c = document.createElement('canvas'); c.className = 'slot'; return c; });
+      V.box.append(...V.slots);
     }
-    V.canvas.width = V.canvas.height = V.px || framePx();
-    V.cur = V.from = null; V.fading = false;
-    V.canvas.dataset.changes = 0;
+    const px = V.px || framePx();
+    for (const c of V.slots) { c.width = c.height = px; c.classList.remove('on'); }
+    V.cur = null; V.front = 0;
+    V.box.dataset.changes = 0;
+    V.box.style.setProperty('--fade', (S.fade || 0) + 'ms');
     stageLabel.textContent = stageCaption.textContent = '';
-    $('stage').replaceChildren(V.canvas, stageLabel, stageCaption);
+    $('stage').replaceChildren(V.box, stageLabel, stageCaption);
   }
   function show(frame, label, caption, alt) {
     stageLabel.textContent = label || '';
     stageCaption.textContent = caption || '';
-    V.canvas.setAttribute('aria-label', alt || '');
+    V.box.setAttribute('aria-label', alt || '');
     if (frame === V.cur) return; // same picture again: nothing changes
-    V.from = V.fading ? null : V.cur; // a fade still running is simply replaced
-    V.cur = frame; V.t0 = performance.now(); V.fading = true;
-    V.canvas.dataset.changes = +V.canvas.dataset.changes + 1;
-    diag.change(V.t0);
-    paint(V.t0);
-  }
-  function paint(now) {
-    if (!V.fading) return;
-    const g = V.g, W = V.canvas.width, a = S.fade ? Math.min(1, (now - V.t0) / S.fade) : 1;
-    g.globalCompositeOperation = 'source-over'; g.globalAlpha = 1;
-    g.clearRect(0, 0, W, W);
-    if (a < 1 && V.from) { g.globalAlpha = 1 - a; g.drawImage(V.from, 0, 0, W, W); g.globalCompositeOperation = 'lighter'; }
-    g.globalAlpha = a; g.drawImage(V.cur, 0, 0, W, W);
-    if (a >= 1) V.fading = false;
+    const back = V.slots[1 - V.front], front = V.slots[V.front];
+    const g = back.getContext('2d');
+    g.clearRect(0, 0, back.width, back.height);
+    g.drawImage(frame, 0, 0, back.width, back.height);
+    back.classList.add('on'); front.classList.remove('on');
+    V.front = 1 - V.front; V.cur = frame;
+    V.box.dataset.changes = +V.box.dataset.changes + 1;
+    diag.change(performance.now());
   }
 
   // ---- Optional timing check (turn on by tapping the "sessions" counter five times) ----
@@ -1522,7 +1530,7 @@
   }
   function loop(now) {
     pump();
-    if (now) { paint(now); diag.frame(now); }
+    if (now) diag.frame(now);
     if (S.running) S.raf = requestAnimationFrame(loop);
   }
 
@@ -1554,7 +1562,7 @@
     }
     await ready;
     if (run !== S.run) return;
-    resetStage(); V.canvas.dataset.fade = S.fade; diag.start();
+    resetStage(); V.box.dataset.fade = S.fade; diag.start();
     S.counting = false;
     $('countdown').textContent = '';
     setTimeout(() => { if (run === S.run && S.running) $('hint').style.opacity = 0; }, cfg.hint ? 5000 : 2500);
