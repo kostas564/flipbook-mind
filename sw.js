@@ -1,5 +1,5 @@
 // Offline support. Bump VERSION when shipping changes to the app shell.
-const VERSION = 'ic-v20';
+const VERSION = 'ic-v21';
 const FONTS = ['fonts.css', 'fraunces-latin-standard-normal.woff2', 'fraunces-latin-ext-standard-normal.woff2',
   'fraunces-latin-standard-italic.woff2', 'fraunces-latin-ext-standard-italic.woff2', 'inter-latin-wght-normal.woff2',
   'inter-latin-ext-wght-normal.woff2', 'inter-greek-wght-normal.woff2', 'inter-greek-ext-wght-normal.woff2'].map(f => 'fonts/' + f);

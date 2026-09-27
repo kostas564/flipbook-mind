@@ -277,7 +277,7 @@
   #stage .layer.out { animation: xfade-out var(--fade, 120ms) ease-in both; }
   @keyframes xfade-in { from { opacity: 0; } to { opacity: 1; } }
   @keyframes xfade-out { from { opacity: 1; } to { opacity: 0; } }
-  #stage img { width: min(80vw, 80vh); height: min(80vw, 80vh); object-fit: contain; }
+  #stage img, #stage canvas { width: min(80vw, 80vh); height: min(80vw, 80vh); object-fit: contain; }
   #stage .textcard {
     width: min(80vw, 80vh); aspect-ratio: 1; border-radius: 32px; display: flex;
     align-items: center; justify-content: center; text-align: center; padding: 24px;
@@ -1337,15 +1337,43 @@
   const sleep = ms => new Promise(r => setTimeout(r, ms));
 
   let nodes = new Map();
-  function buildNodes() {
-    // Pre-build one node per item so switching is instant.
+  // Photos are unpacked once and drawn at their on-screen size before a session starts, so
+  // flipping never waits for an image to decode (Safari also throws decoded images away, which
+  // made cycling pause now and then). Kept between sessions; redone if an image or the size changes.
+  const frames = new Map();
+  const framePx = () => Math.min(1200, Math.round(Math.min(innerWidth, innerHeight) * 0.8 * Math.min(devicePixelRatio || 1, 2)));
+  async function frameFor(it, px) {
+    const f = frames.get(it.id);
+    if (f && f.px === px && f.blob === it.blob) return f.el;
+    let el;
+    try {
+      const bmp = await createImageBitmap(it.blob);
+      const k = Math.min(px / bmp.width, px / bmp.height), w = Math.round(bmp.width * k), h = Math.round(bmp.height * k);
+      el = document.createElement('canvas');
+      el.width = el.height = px;
+      const g = el.getContext('2d');
+      g.imageSmoothingQuality = 'high';
+      g.drawImage(bmp, (px - w) / 2, (px - h) / 2, w, h);
+      if (bmp.close) bmp.close();
+      el.setAttribute('role', 'img');
+    } catch {
+      // Fall back to a plain image, decoded up front.
+      el = new Image(); el.src = urlFor(it);
+      try { await el.decode(); } catch {}
+    }
+    frames.set(it.id, { px, blob: it.blob, el });
+    return el;
+  }
+  async function buildNodes() {
     nodes = new Map();
-    for (const it of items) {
+    const px = framePx();
+    for (const id of [...frames.keys()]) if (!items.some(it => it.id === id)) frames.delete(id);
+    await Promise.all(items.map(async it => {
       let el;
-      if (it.blob) { el = new Image(); el.src = urlFor(it); el.decoding = 'async'; el.alt = it.text || ''; }
+      if (it.blob) { el = await frameFor(it, px); el.setAttribute('aria-label', it.text || ''); if (el.tagName === 'IMG') el.alt = it.text || ''; }
       else { el = document.createElement('div'); el.className = 'textcard'; el.style.background = gradient(it); el.textContent = it.text; }
       nodes.set(it.id, el);
-    }
+    }));
   }
   const imagineNode = (() => { const d = document.createElement('div'); d.className = 'imagine'; d.textContent = 'imagine'; return d; })();
 
@@ -1402,7 +1430,7 @@
     if (items.length < 2 || !acknowledged()) return;
     const run = ++S.run;
     audio();
-    buildNodes();
+    const ready = buildNodes(); // prepared while the countdown runs
     S.cfg = cfg; S.level = level || null;
     // 120 ms crossfade, shortened at fast speeds so each fade finishes before the next image.
     S.fade = Math.round(Math.min(120, (cfg.interval || 1000) * 0.6));
@@ -1425,6 +1453,8 @@
       await sleep(800);
       if (run !== S.run) return;
     }
+    await ready;
+    if (run !== S.run) return;
     S.counting = false;
     $('countdown').textContent = '';
     setTimeout(() => { if (run === S.run && S.running) $('hint').style.opacity = 0; }, cfg.hint ? 5000 : 2500);
