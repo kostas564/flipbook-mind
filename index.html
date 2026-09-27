@@ -1037,7 +1037,7 @@
     $('helpOk').disabled = false; $('helpOk').textContent = 'Save backup';
   };
   $('restoreBtn').onclick = () => {
-    const find = 'It’s named <b>flipbook-mind-backup-</b> followed by a date (older backups start with <b>image-cycling-backup-</b>).';
+    const find = 'It’s named <b>flipbook-mind-backup-</b> followed by a date.';
     const steps = {
       ios: ['Tap <b>Choose file</b>, then <b>Browse</b> if you see it.', `Find your backup file, for example in Downloads or iCloud Drive. ${find}`, 'Tap the file to restore it.'],
       android: ['Tap <b>Choose file</b>.', `Find your backup file, usually in <b>Downloads</b>. ${find}`, 'Tap the file to restore it.'],
@@ -1486,7 +1486,10 @@
   }
   // A history entry per session, so the phone's Back button or back-swipe ends the session
   // instead of leaving the app.
+  // Not on iPhone/iPad: there's no Back button (tap anywhere stops a session), and Safari's
+  // right-to-left swipe would go "forward" to the finished session and show a black snapshot of it.
   function enterHistory() {
+    if (isIOS) return;
     try { if (!(history.state && history.state.icSession)) history.pushState({ icSession: true }, ''); } catch {}
   }
   addEventListener('popstate', () => { if ($('session').classList.contains('on')) exit(true); });
