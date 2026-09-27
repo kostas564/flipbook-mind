@@ -271,9 +271,9 @@
   /* Every image gets the same square frame as the text cards: shown whole, scaled up or down to fit. */
   #stage .layer {
     position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
-    animation: xfade-in 120ms ease-out both;
+    animation: xfade-in var(--fade, 120ms) ease-out both;
   }
-  #stage .layer.out { animation: xfade-out 120ms ease-in both; }
+  #stage .layer.out { animation: xfade-out var(--fade, 120ms) ease-in both; }
   @keyframes xfade-in { from { opacity: 0; } to { opacity: 1; } }
   @keyframes xfade-out { from { opacity: 1; } to { opacity: 0; } }
   #stage img { width: min(80vw, 80vh); height: min(80vw, 80vh); object-fit: contain; }
@@ -600,7 +600,7 @@
   ];
   // WCAG 2.3.1: no more than three flashes in any one second. Faster speeds need an explicit opt-in,
   // and the device's Reduce Motion setting caps everything at one image per second.
-  const SAFE_RATE = 3, FAST_RATE = 5;
+  const SAFE_RATE = 3, FAST_RATE = 10;
 
   // ---------- Storage (IndexedDB for items, localStorage for settings/stats) ----------
   // Images live in `items` and are written once, when added or replaced. Order, captions and
@@ -1085,7 +1085,7 @@
       if (e.target.checked) {
         e.target.checked = false;
         const ok = await ask('Allow fast speeds?',
-          'Speeds above 3 images per second flash faster than the level considered safe for people with photosensitive epilepsy, and can trigger seizures. Only turn this on if flashing lights don’t affect you, and stop immediately if you feel unwell.',
+          'This unlocks speeds of up to 10 images per second. Speeds above 3 per second flash faster than the level considered safe for people with photosensitive epilepsy, and can trigger seizures. Only turn this on if flashing lights don’t affect you, and stop immediately if you feel unwell.',
           [['', 'Cancel'], ['yes', 'I understand, allow', true]]);
         settings.fast = ok === 'yes';
       } else settings.fast = false;
@@ -1235,7 +1235,7 @@
   // ---------- Session engine (shared by both modes) ----------
   // Timing comes from the clock, not from counting frames, so a busy or
   // backgrounded page can't stretch a session or drift the pace.
-  const S = { run: 0, running: false, counting: false, paused: false, cfg: null, level: null,
+  const S = { run: 0, running: false, counting: false, paused: false, cfg: null, level: null, fade: 120,
               order: [], k: 0, round: 0, t0: 0, pausedMs: 0, pausedAt: 0, total: 0, raf: 0, poll: 0 };
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -1257,7 +1257,7 @@
   function show(kids) {
     const stage = $('stage'), cur = stage.querySelector('.layer:not(.out)');
     if (cur && cur.firstChild === kids[0]) return; // same image again: nothing changes
-    if (cur) { cur.classList.add('out'); setTimeout(() => cur.remove(), 160); }
+    if (cur) { cur.classList.add('out'); setTimeout(() => cur.remove(), S.fade + 40); }
     const layer = document.createElement('div');
     layer.className = 'layer';
     layer.append(...kids);
@@ -1306,6 +1306,9 @@
     audio();
     buildNodes();
     S.cfg = cfg; S.level = level || null;
+    // 120 ms crossfade, shortened at fast speeds so each fade finishes before the next image.
+    S.fade = Math.round(Math.min(120, (cfg.interval || 1000) * 0.6));
+    $('stage').style.setProperty('--fade', S.fade + 'ms');
     const ov = $('session');
     ov.classList.add('on');
     for (const id of ['done', 'quiz', 'paused']) $(id).style.display = 'none';
