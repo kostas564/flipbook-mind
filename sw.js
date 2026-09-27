@@ -1,6 +1,9 @@
 // Offline support. Bump VERSION when shipping changes to the app shell.
-const VERSION = 'ic-v13';
-const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png'];
+const VERSION = 'ic-v18';
+const FONTS = ['fonts.css', 'fraunces-latin-standard-normal.woff2', 'fraunces-latin-ext-standard-normal.woff2',
+  'fraunces-latin-standard-italic.woff2', 'fraunces-latin-ext-standard-italic.woff2', 'inter-latin-wght-normal.woff2',
+  'inter-latin-ext-wght-normal.woff2', 'inter-greek-wght-normal.woff2', 'inter-greek-ext-wght-normal.woff2'].map(f => 'fonts/' + f);
+const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon.svg', 'icon-192.png', 'icon-512.png', 'apple-touch-icon.png', ...FONTS];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(VERSION).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));
@@ -17,9 +20,8 @@ self.addEventListener('activate', e => {
 self.addEventListener('fetch', e => {
   const req = e.request;
   if (req.method !== 'GET') return;
-  const url = new URL(req.url);
-  const fonts = url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com';
-  if (url.origin !== location.origin && !fonts) return;
+  // The app only ever loads its own files.
+  if (new URL(req.url).origin !== location.origin) return;
 
   // Pages: network first so updates show up, cache when offline.
   if (req.mode === 'navigate') {
@@ -36,7 +38,7 @@ self.addEventListener('fetch', e => {
     caches.open(VERSION).then(async c => {
       const hit = await c.match(req);
       const net = fetch(req)
-        .then(res => { if (res.ok || res.type === 'opaque') c.put(req, res.clone()); return res; })
+        .then(res => { if (res.ok) c.put(req, res.clone()); return res; })
         .catch(() => hit);
       return hit || net;
     })

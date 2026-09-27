@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src https://fonts.gstatic.com; img-src 'self' blob: data:; connect-src 'self' data:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' blob: data:; connect-src 'self' data:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#07051a">
 <meta name="description" content="A free rapid-imaging practice tool inspired by William Bengston’s Image Cycling® technique. Works offline; your images never leave your device.">
@@ -14,9 +14,7 @@
 <link rel="icon" href="icon.svg" type="image/svg+xml">
 <link rel="apple-touch-icon" href="apple-touch-icon.png">
 <title>Flipbook Mind</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300..700;1,9..144,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="fonts/fonts.css">
 <style>
   :root {
     color-scheme: dark;
@@ -36,7 +34,7 @@
     --grad: linear-gradient(120deg, #8b5cf6 0%, #ec4899 55%, #f59e0b 100%);
     --grad-text: linear-gradient(100deg, #fde68a 0%, #f9a8d4 45%, #c4b5fd 100%);
     --glow: 0 8px 32px rgba(236, 72, 153, 0.35), 0 2px 10px rgba(139, 92, 246, 0.4);
-    --display: "Fraunces", Georgia, serif;
+    --display: "Fraunces Variable", "Fraunces", Georgia, serif;
   }
   * { box-sizing: border-box; }
   [hidden] { display: none !important; }
@@ -44,7 +42,7 @@
   body {
     background: var(--bg);
     color: var(--text);
-    font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    font-family: "Inter Variable", "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     line-height: 1.55;
     min-height: 100vh;
     overflow-x: hidden;
@@ -202,9 +200,9 @@
   details ol { padding-left: 20px; color: var(--muted); margin-bottom: 4px; }
   details li { margin: 6px 0; }
   .warn { font-size: 0.82rem; color: var(--muted); margin-top: 10px; }
-  .about { margin-top: 30px; }
-  .about h2 { margin-bottom: 4px; }
-  .about details { margin-top: 10px; }
+  .info > p { color: var(--muted); margin: 0; }
+  .info details { margin-top: 12px; background: rgba(0, 0, 0, 0.2); }
+  .info a, .disclaimer a { color: var(--accent); }
   details p { color: var(--muted); margin: 10px 0 0; }
   details ul { padding-left: 20px; color: var(--muted); margin-bottom: 4px; }
   details a { color: var(--accent); }
@@ -272,6 +270,13 @@
   #session.on { display: flex; }
   #stage { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; }
   /* Every image gets the same square frame as the text cards: shown whole, scaled up or down to fit. */
+  #stage .layer {
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    animation: xfade-in var(--fade, 120ms) ease-out both;
+  }
+  #stage .layer.out { animation: xfade-out var(--fade, 120ms) ease-in both; }
+  @keyframes xfade-in { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes xfade-out { from { opacity: 1; } to { opacity: 0; } }
   #stage img { width: min(80vw, 80vh); height: min(80vw, 80vh); object-fit: contain; }
   #stage .textcard {
     width: min(80vw, 80vh); aspect-ratio: 1; border-radius: 32px; display: flex;
@@ -425,7 +430,7 @@
     <div class="row" style="margin-top:14px">
       <label class="btn primary" for="fileIn">+ Add images</label>
       <input id="fileIn" type="file" accept="image/*" multiple>
-      <input id="textIn" type="text" placeholder="…or type a goal (e.g. “Healthy & strong”)" maxlength="60" aria-label="Goal text">
+      <input id="textIn" type="text" placeholder="…or type a goal (e.g. “Visit Japan”)" maxlength="60" aria-label="Goal text">
       <button id="addText">Add</button>
     </div>
     <div id="grid" class="grid"></div>
@@ -455,7 +460,7 @@
         <div>
           <label class="field">
             <span>Speed <output id="speedOut"></output></span>
-            <input id="speed" type="range" min="200" max="2000" step="50">
+            <input id="speed" type="range" min="0.5" max="3" step="0.25">
           </label>
           <label class="field">
             <span>Duration <output id="durOut"></output></span>
@@ -467,6 +472,7 @@
           <label class="check"><input id="caps" type="checkbox"> Show captions</label>
           <label class="check"><input id="chime" type="checkbox"> Soft chime at the end</label>
           <label class="check"><input id="fs" type="checkbox"> Full screen</label>
+          <label class="check"><input id="fast" type="checkbox"> Allow fast speeds (above 3 per second)</label>
         </div>
       </div>
       <p id="speedWarn" class="warn">⚠️ Fast cycling creates flashing. If you are sensitive to flashing lights, use a slower speed.</p>
@@ -481,13 +487,13 @@
     <section class="card">
       <h2>Train your mind</h2>
       <p class="sub" style="margin-top:-6px">
-        In the healing method you cycle the images in your head, not on a screen. These levels take the images away
+        In the full practice you cycle the images in your head, not on a screen. These levels take the images away
         step by step, until you can run through your whole list with your eyes closed. Work through them in order, over several days if you need to.
       </p>
       <div class="settings" style="margin-top:18px">
         <label class="field">
           <span>Pace <output id="paceOut"></output></span>
-          <input id="pace" type="range" min="300" max="2500" step="50">
+          <input id="pace" type="range" min="350" max="2500" step="50">
         </label>
         <label class="field">
           <span>Practice length <output id="tdurOut"></output></span>
@@ -503,30 +509,17 @@
     </section>
   </div>
 
-  <section class="about" aria-labelledby="aboutTitle">
-    <h2 id="aboutTitle">About the method</h2>
+  <section class="card info" aria-labelledby="aboutTitle">
+    <h2 id="aboutTitle">About</h2>
+    <p>Flipbook Mind is a free rapid-imaging practice tool inspired by William Bengston’s Image Cycling® technique. For the authentic method and training, visit <a href="https://bengstonresearch.com/" target="_blank" rel="noopener">bengstonresearch.com</a>.</p>
 
     <details>
       <summary>Who was William Bengston?</summary>
-      <p>Dr. William (Bill) Bengston (1950–2025) was an American sociologist. For 40 years he taught statistics and research methods at St. Joseph’s College (now St. Joseph’s University) in New York, and from 2010 to 2022 he was president of the Society for Scientific Exploration.</p>
-      <p>He spent more than four decades studying hands-on healing, and described himself as a skeptic who set out to test it rather than a believer. He died at home on April 16, 2025, aged 75.</p>
+      <p>Dr William (Bill) Bengston (1950–2025) was an American sociologist. For 40 years he taught statistics and research methods at St Joseph’s College (now St Joseph’s University) in New York, and from 2010 to 2022 he was president of the Society for Scientific Exploration. He spent more than four decades researching hands-on healing, and described himself as a sceptic who set out to test it rather than a believer. He died at home on 16 April 2025, aged 75.</p>
     </details>
 
     <details>
-      <summary>How it started</summary>
-      <p>In the summer of 1971, 21-year-old Bengston was working as a lifeguard on Long Island when he met Bennett Mayrick, a middle-aged house cleaner said to have psychic and healing abilities.</p>
-      <p>Over several months of questions and self-observation, the two worked out a technique of very rapid mental imaging combined with hands-on practice. Bengston called the mental part <b>Image Cycling®</b>.</p>
-    </details>
-
-    <details>
-      <summary>The mouse experiments</summary>
-      <p>To test the healing under controlled conditions, Bengston set up an experiment at Queens College, City University of New York, with the geologist David Krinsley. Mayrick declined to take part at the last minute, so Bengston did the healing himself.</p>
-      <p>The mice had been injected with a mammary cancer that is normally 100% fatal within about 27 days. According to the paper, all five treated mice were cured, and they then resisted the same cancer when injected again. Bengston and Krinsley published the results in the <i>Journal of Scientific Exploration</i> in 2000.</p>
-      <p>Later rounds used skeptical volunteers trained in the method and reported a combined cure rate of 87.9% in 33 mice. Oddly, untreated control mice often recovered too. That led Bengston to propose <b>resonant bonding</b>: the idea that the healer, the treated animals and the controls become connected.</p>
-    </details>
-
-    <details>
-      <summary>How Image Cycling works</summary>
+      <summary>How to cycle</summary>
       <ol>
         <li>Write a list of at least 20 specific things you want for yourself. Make them concrete: not “be happy”, but a specific place you want to visit.</li>
         <li>Turn each item into one vivid image that shows it already achieved, as if it’s happening now.</li>
@@ -534,52 +527,26 @@
         <li>Cycle through the images in your mind: about one per second at first, then two per second, then faster, until the whole list flashes by in a second or so. As you speed up, let go of the feelings attached to each image.</li>
         <li>Keep it light and relaxed, and practise a little every day. When you get something on your list, or stop wanting it, replace it with something new.</li>
       </ol>
-      <p>Advanced students go on to <b>hypercycling</b>: placing all the images on an imagined spinning object, like a rolodex or a clock face. In the healing method, the healer cycles while resting their hands on the person, without focusing on the outcome.</p>
+      <p>Advanced practitioners go on to <b>hypercycling</b>: placing all the images on an imagined spinning object, like a rolodex or a clock face.</p>
     </details>
 
     <details>
       <summary>Why cycle fast?</summary>
-      <p>The images don’t do the healing. Their job is to keep your thinking mind busy so it stays out of the way. Bennett Mayrick noticed he healed better while chatting about something unrelated than when he concentrated, and Image Cycling was built to recreate that on purpose.</p>
-      <p>Bengston compared the conscious mind to a guard dog: throw it a steak to keep it busy while the real work happens. The details follow from that:</p>
+      <p>The images keep your thinking mind busy so it stays out of the way. Bengston compared the conscious mind to a guard dog: throw it a steak to keep it busy while the real work happens.</p>
       <ul>
-        <li><b>A selfish list:</b> the images are things <i>you</i> want, not things for someone else. Feeding the ego what it secretly wants keeps it content and quiet.</li>
+        <li><b>A selfish list:</b> the images are things you want, not things for someone else. Feeding the ego what it secretly wants keeps it content and quiet.</li>
         <li><b>Speed:</b> going fast means you can’t dwell on, judge or hope about any one image. That’s why you let go of the feelings as you speed up.</li>
         <li><b>No focus on the outcome:</b> trying to will a result is exactly the interference the method avoids. Stay detached, even a little bored.</li>
-        <li><b>No belief needed:</b> the method doesn’t depend on faith, which is why skeptical volunteers could use it in the mouse studies.</li>
-      </ul>
-      <p>Why the healing itself would work, Bengston openly said he didn’t know; his best guess was resonant bonding. The mental side is easier to recognise: rapid cycling is a lot like focused-attention meditation. It gives the mind one simple task, interrupts worry and overthinking, and tends to bring a relaxed, absorbed state.</p>
-    </details>
-
-    <details>
-      <summary>Getting what’s on your list</summary>
-      <p>Bengston developed Image Cycling for healing, but people who practised it reported a side effect: things on their lists tended to come true, without them trying to make it happen. That is why Image Cycling spread online as a manifestation technique.</p>
-      <p>Bengston himself didn’t believe in “manifesting” in the sense of creating something from nothing. Instead, he speculated about a “teleological pull from the future” drawing the outcomes on your list toward you. This app follows the same approach: build your list, cycle it lightly every day, and let the results take care of themselves.</p>
-    </details>
-
-    <details>
-      <summary>What the science says</summary>
-      <p>The mouse results appeared in the <i>Journal of Scientific Exploration</i> and a few other journals outside mainstream medicine, and critics point out that they haven’t been widely replicated by independent labs. There are no clinical trials showing that the method treats cancer or any other illness in people.</p>
-      <p>If you cycle health goals, do it alongside medical care, never instead of it.</p>
-    </details>
-
-    <details>
-      <summary>Learn more</summary>
-      <ul>
-        <li><a href="https://www.soundstrue.com/products/hands-on-healing" target="_blank" rel="noopener"><i>Hands-On Healing</i></a>, Bengston’s audio training course, and his book <a href="https://www.goodreads.com/book/show/8025803-the-energy-cure" target="_blank" rel="noopener"><i>The Energy Cure: Unraveling the Mystery of Hands-On Healing</i></a> (Sounds True, 2010).</li>
-        <li><a href="https://www.semanticscholar.org/paper/7c6ec2e91dd3e8bf99be35a9a68524946ad4663b" target="_blank" rel="noopener">Bengston &amp; Krinsley (2000)</a>, “The effect of the ‘laying on of hands’ on transplanted breast cancer in mice”, <i>Journal of Scientific Exploration</i> 14(3).</li>
-        <li><a href="https://bengstonresearch.com/" target="_blank" rel="noopener">Bengston Research</a>: the official site of the Bengston Energy Healing Method, with its research papers and workshops.</li>
       </ul>
     </details>
   </section>
 
   <footer class="disclaimer">
     <h2>Disclaimer</h2>
-    <p>This is a personal, just-for-fun project. It isn’t affiliated with, endorsed by or connected to William Bengston, Bengston Research, the Bengston Energy Healing Method® or anyone else. The information here is a summary for general interest, and may contain mistakes.</p>
-    <p><b>This app is not medical advice and does not diagnose, treat or cure anything.</b> If you have a health concern, please see a doctor or other qualified health professional, and never delay or stop medical treatment because of anything here. In an emergency, call your local emergency number.</p>
-    <p>“Image Cycling” and “The Bengston Energy Healing Method” are registered trademarks of L&nbsp;&amp;&nbsp;B Consulting, Inc. This app is not affiliated with or endorsed by them. For the authentic method, training and workshops, visit <a href="https://bengstonresearch.com/" target="_blank" rel="noopener">bengstonresearch.com</a>.</p>
-    <p>This app is provided free, as is, without warranty of any kind. You use it at your own risk, and the author accepts no liability for any outcome of its use.</p>
-    <p>The app flashes images rapidly. If you have epilepsy or photosensitivity, don’t use fast speeds, and stop if you feel unwell.</p>
-    <p>The app stores nothing on any server and collects no data. Your images stay on your device.</p>
+    <p>This is a personal, unofficial project. It isn’t affiliated with or endorsed by William Bengston, Bengston Research or L&nbsp;&amp;&nbsp;B Consulting, Inc. “Image Cycling” and “The Bengston Energy Healing Method” are registered trademarks of L&nbsp;&amp;&nbsp;B Consulting, Inc.</p>
+    <p>This app is not medical advice and doesn’t diagnose, treat or cure anything. If you have a health concern, see a doctor.</p>
+    <p><b>Flashing:</b> the app flashes images rapidly. If you have epilepsy or photosensitivity, use slow speeds and stop if you feel unwell.</p>
+    <p>Provided free, as is, without warranty. You use it at your own risk. Nothing is stored on any server and no data is collected. Your images stay on your device.</p>
   </footer>
 </div>
 
@@ -643,18 +610,25 @@
   </form>
 </dialog>
 
+<dialog id="warnDlg" aria-labelledby="warnTitle" aria-describedby="warnMsg">
+  <h2 id="warnTitle">⚠️ Flashing images</h2>
+  <p id="warnMsg">This app displays rapidly changing images. If you have epilepsy or are sensitive to flashing lights, use slow speeds or don’t use the app. Stop immediately if you feel unwell.</p>
+  <div class="row end"><button id="ackBtn" class="primary">I understand</button></div>
+</dialog>
+
 <div id="toast" role="status" aria-live="polite"></div>
 
 <script>
 (() => {
   const $ = id => document.getElementById(id);
   const GRADIENTS = [
-    ['#6d4aff','#c86bff'], ['#ff7a59','#ffb347'], ['#12b886','#38d9a9'],
-    ['#228be6','#66d9e8'], ['#e64980','#ff8787'], ['#f59f00','#ffd43b'],
+    ['#6d4aff','#c86bff'], ['#0891b2','#67e8f9'], ['#12b886','#38d9a9'],
+    ['#228be6','#66d9e8'], ['#9333ea','#e9a8f5'], ['#f59f00','#ffd43b'],
     ['#7048e8','#339af0'], ['#0ca678','#94d82d']
   ];
-  // Above 3 flashes per second is the WCAG photosensitivity threshold.
-  const FLASH_MS = 334;
+  // WCAG 2.3.1: no more than three flashes in any one second. Faster speeds need an explicit opt-in,
+  // and the device's Reduce Motion setting caps everything at one image per second.
+  const SAFE_RATE = 3, FAST_RATE = 10;
 
   // ---------- Storage (IndexedDB for items, localStorage for settings/stats) ----------
   // Images live in `items` and are written once, when added or replaced. Order, captions and
@@ -735,8 +709,18 @@
   let items = [];
   const urls = new Map();
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const DEFAULTS = { speed: reduceMotion ? 800 : 500, dur: 3, shuffle: true, caps: false, chime: true, fs: true, pace: 1000, tdur: 2, vol: 50, mode: 'cycle' };
+  const DEFAULTS = { speed: reduceMotion ? 1000 : 500, dur: 3, shuffle: true, caps: false, chime: true, fs: false, fast: false, pace: 1000, tdur: 2, vol: 50, mode: 'cycle' };
   const settings = Object.assign({}, DEFAULTS, ls.get('ic-settings', {}));
+  // Highest image rate (per second) and fastest training pace (ms) currently allowed.
+  const limits = () => reduceMotion ? { rate: 1, pace: 1000 }
+    : settings.fast ? { rate: FAST_RATE, pace: 300 } : { rate: SAFE_RATE, pace: 350 };
+  function clampSpeeds() {
+    if (reduceMotion) settings.fast = false;
+    const L = limits();
+    settings.speed = Math.min(2000, Math.max(Math.ceil(1000 / L.rate), +settings.speed || DEFAULTS.speed));
+    settings.pace = Math.min(2500, Math.max(L.pace, +settings.pace || DEFAULTS.pace));
+  }
+  clampSpeeds();
   const stats = Object.assign({ total: 0, streak: 0, last: null }, ls.get('ic-stats', {}));
   let trained = ls.get('ic-trained', {});
 
@@ -1016,6 +1000,7 @@
       for (const id of [...urls.keys()]) dropUrl(id);
       items = [];
       for (const k of Object.keys(DEFAULTS)) {
+        if (k === 'fast') continue; // fast speeds always need this device's own confirmation
         const v = data.settings && data.settings[k];
         if (typeof v === typeof DEFAULTS[k]) settings[k] = v;
       }
@@ -1091,21 +1076,30 @@
   addEventListener('appinstalled', () => { $('installBtn').hidden = true; keepStorage(); });
 
   // ---------- Settings UI ----------
+  const rateOf = ms => Math.round(1000 / ms * 4) / 4;
   function bindSettings() {
+    clampSpeeds();
+    const L = limits();
     const upd = () => {
-      $('speedOut').textContent = `${(1000 / settings.speed).toFixed(1)} images/sec`;
+      ls.set('ic-settings', settings);
+      $('speedOut').textContent = `${rateOf(settings.speed)} image${rateOf(settings.speed) === 1 ? '' : 's'}/sec`;
       $('durOut').textContent = `${settings.dur} min`;
       $('paceOut').textContent = `${(settings.pace / 1000).toFixed(2)} s per image`;
       $('tdurOut').textContent = `${settings.tdur} min`;
       $('volOut').textContent = settings.vol ? `${settings.vol}%` : 'Off';
-      const hot = settings.speed < FLASH_MS;
-      $('speedWarn').classList.toggle('hot', hot);
-      $('speedWarn').textContent = hot
-        ? '⚠️ Faster than 3 images per second. This level of flashing can trigger seizures in people with photosensitive epilepsy.'
-        : '⚠️ Fast cycling creates flashing. If you are sensitive to flashing lights, use a slower speed.';
-      ls.set('ic-settings', settings);
+      const fast = rateOf(settings.speed) > SAFE_RATE;
+      $('speedWarn').classList.toggle('hot', fast || reduceMotion);
+      $('speedWarn').textContent = reduceMotion
+        ? 'Your device’s Reduce Motion setting is on, so speed is limited to 1 image per second.'
+        : fast
+          ? '⚠️ Faster than 3 images per second. This level of flashing can trigger seizures in people with photosensitive epilepsy.'
+          : '⚠️ Cycling creates flashing. If you are sensitive to flashing lights, use a slow speed.';
     };
-    for (const k of ['speed', 'dur', 'pace', 'tdur', 'vol']) {
+    $('speed').max = L.rate;
+    $('speed').value = rateOf(settings.speed);
+    $('speed').oninput = e => { settings.speed = Math.round(1000 / +e.target.value); upd(); };
+    $('pace').min = L.pace;
+    for (const k of ['dur', 'pace', 'tdur', 'vol']) {
       $(k).value = settings[k];
       $(k).oninput = e => { settings[k] = +e.target.value; upd(); };
     }
@@ -1113,6 +1107,18 @@
       $(k).checked = settings[k];
       $(k).onchange = e => { settings[k] = e.target.checked; upd(); };
     }
+    $('fast').checked = settings.fast;
+    $('fast').disabled = reduceMotion;
+    $('fast').onchange = async e => {
+      if (e.target.checked) {
+        e.target.checked = false;
+        const ok = await ask('Allow fast speeds?',
+          'This unlocks speeds of up to 10 images per second. Speeds above 3 per second flash faster than the level considered safe for people with photosensitive epilepsy, and can trigger seizures. Only turn this on if flashing lights don’t affect you, and stop immediately if you feel unwell.',
+          [['', 'Cancel'], ['yes', 'I understand, allow', true]]);
+        settings.fast = ok === 'yes';
+      } else settings.fast = false;
+      bindSettings();
+    };
     $('vol').onchange = () => { audio(); tick(false); };
     upd();
   }
@@ -1257,7 +1263,7 @@
   // ---------- Session engine (shared by both modes) ----------
   // Timing comes from the clock, not from counting frames, so a busy or
   // backgrounded page can't stretch a session or drift the pace.
-  const S = { run: 0, running: false, counting: false, paused: false, cfg: null, level: null,
+  const S = { run: 0, running: false, counting: false, paused: false, cfg: null, level: null, fade: 120,
               order: [], k: 0, round: 0, t0: 0, pausedMs: 0, pausedAt: 0, total: 0, raf: 0, poll: 0 };
   const shuffle = a => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -1275,6 +1281,16 @@
   }
   const imagineNode = (() => { const d = document.createElement('div'); d.className = 'imagine'; d.textContent = 'imagine'; return d; })();
 
+  // Crossfade into the next image instead of a hard cut, to soften each change.
+  function show(kids) {
+    const stage = $('stage'), cur = stage.querySelector('.layer:not(.out)');
+    if (cur && cur.firstChild === kids[0]) return; // same image again: nothing changes
+    if (cur) { cur.classList.add('out'); setTimeout(() => cur.remove(), S.fade + 40); }
+    const layer = document.createElement('div');
+    layer.className = 'layer';
+    layer.append(...kids);
+    stage.appendChild(layer);
+  }
   function step() {
     const c = S.cfg, n = S.order.length;
     const round = Math.floor(S.k / n);
@@ -1292,7 +1308,7 @@
       cap.className = 'caption'; cap.textContent = `${pos + 1} of ${n}`;
       kids.push(cap);
     }
-    $('stage').replaceChildren(...kids);
+    show(kids);
     if (c.tick) tick(vis);
     S.k++;
   }
@@ -1313,17 +1329,20 @@
   }
 
   async function runSession(cfg, level) {
-    if (items.length < 2) return;
+    if (items.length < 2 || !acknowledged()) return;
     const run = ++S.run;
     audio();
     buildNodes();
     S.cfg = cfg; S.level = level || null;
+    // 120 ms crossfade, shortened at fast speeds so each fade finishes before the next image.
+    S.fade = Math.round(Math.min(120, (cfg.interval || 1000) * 0.6));
+    $('stage').style.setProperty('--fade', S.fade + 'ms');
     const ov = $('session');
     ov.classList.add('on');
     for (const id of ['done', 'quiz', 'paused']) $(id).style.display = 'none';
     $('stage').replaceChildren(); $('bar').style.width = '0';
     const touch = matchMedia('(hover: none)').matches;
-    $('hint').textContent = (cfg.hint ? cfg.hint + ' · ' : '') + (touch ? 'Tap to pause · ✕ to stop' : 'Tap or Space to pause · Esc to stop');
+    $('hint').textContent = (cfg.hint ? cfg.hint + ' · ' : '') + (touch ? 'Tap anywhere to stop' : 'Click or Esc to stop · Space to pause');
     $('stopBtn').hidden = false;
     enterHistory();
     $('hint').style.opacity = 1;
@@ -1355,18 +1374,12 @@
     S.poll = setInterval(pump, 250);
   }
 
-  async function startCycle() {
-    if (settings.speed < FLASH_MS && !ls.get('ic-flash-ok', false)) {
-      const ok = await ask('Fast flashing',
-        `At ${(1000 / settings.speed).toFixed(1)} images per second the screen flashes faster than 3 times a second, which can trigger seizures in people with photosensitive epilepsy. Continue only if flashing lights don’t affect you.`,
-        [['slow', 'Use a safer speed'], ['go', 'I understand, start', true]]);
-      if (ok === 'slow') { settings.speed = FLASH_MS + 16; bindSettings(); }
-      else if (ok === 'go') ls.set('ic-flash-ok', true);
-      else return;
-    }
+  function startCycle() {
+    clampSpeeds();
     runSession({ interval: settings.speed, minutes: settings.dur, visible: () => true, shuffle: settings.shuffle, tick: false, labels: settings.caps });
   }
   function startTraining(L) {
+    clampSpeeds();
     const cfg = Object.assign({ minutes: settings.tdur, shuffle: false, hint: L.hint }, L.run());
     runSession(cfg, L);
   }
@@ -1408,6 +1421,7 @@
   }
   addEventListener('popstate', () => { if ($('session').classList.contains('on')) exit(true); });
   function exit(fromBack) {
+    if (!$('session').classList.contains('on')) return;
     if (!fromBack && history.state && history.state.icSession) { try { history.back(); } catch {} }
     $('stopBtn').hidden = true;
     stopTimers();
@@ -1436,7 +1450,7 @@
     return shuffle(d);
   }
   function startQuiz() {
-    if (items.length < 4) return;
+    if (items.length < 4 || !acknowledged()) return;
     stopTimers();
     Q.n = 0; Q.score = 0; Q.busy = false; Q.deck = quizDeck();
     $('session').classList.add('on');
@@ -1498,7 +1512,12 @@
   $('startBtn').onclick = startCycle;
   $('closeDone').onclick = () => exit();
   $('quizClose').onclick = () => exit();
-  $('stage').onclick = togglePause;
+  // Tapping or clicking anywhere during a session stops it straight away.
+  // (The done screen and the quiz have their own buttons, and S.running is false there.)
+  $('session').addEventListener('click', e => {
+    if (!S.running || e.target.closest('#paused button')) return;
+    exit();
+  });
   $('resumeBtn').onclick = togglePause;
   $('endBtn').onclick = () => exit();
   $('stopBtn').onclick = () => exit();
@@ -1516,6 +1535,17 @@
     renderStats(); // the streak may have lapsed overnight
     if (S.running) { lockScreen(); audio(); }
   });
+
+  // ---------- First-launch photosensitivity warning ----------
+  let acked = ls.get('ic-ack', false) === true;
+  function acknowledged() {
+    if (!acked && !$('warnDlg').open) $('warnDlg').showModal();
+    return acked;
+  }
+  $('warnDlg').addEventListener('cancel', e => e.preventDefault());
+  $('warnDlg').addEventListener('close', () => { if (!acked) $('warnDlg').showModal(); });
+  $('ackBtn').onclick = () => { acked = true; ls.set('ic-ack', true); $('warnDlg').close(); };
+  acknowledged();
 
   // ---------- Boot ----------
   (async () => {
