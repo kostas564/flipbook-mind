@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' blob: data:; connect-src 'self' data:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://gc.zgo.at; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' blob: data: https://flipbookmind.goatcounter.com; connect-src 'self' data: https://flipbookmind.goatcounter.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#07051a">
 <meta name="description" content="A free rapid-imaging practice tool inspired by William Bengston’s Image Cycling® technique. Works offline; your images never leave your device.">
@@ -564,7 +564,7 @@
     <p>This is a personal, unofficial project. It isn’t affiliated with or endorsed by William Bengston, Bengston Research or L&nbsp;&amp;&nbsp;B Consulting, Inc. “Image Cycling” and “The Bengston Energy Healing Method” are registered trademarks of L&nbsp;&amp;&nbsp;B Consulting, Inc.</p>
     <p>This app is not medical advice and doesn’t diagnose, treat or cure anything. If you have a health concern, see a doctor.</p>
     <p><b>Flashing:</b> the app flashes images rapidly. If you have epilepsy or photosensitivity, use slow speeds and stop if you feel unwell.</p>
-    <p>Provided free, as is, without warranty. You use it at your own risk. Nothing is stored on any server and no data is collected. Your images stay on your device.</p>
+    <p>Provided free, as is, without warranty. You use it at your own risk. Your images and list stay on your device and are never uploaded. The app counts first-time visits anonymously using GoatCounter, a privacy-friendly service that sets no cookies and doesn’t store your IP address, and keeps a small marker on your device so it only counts you once.</p>
   </footer>
 </div>
 
@@ -1843,6 +1843,23 @@
     render();
     if (items.length) keepStorage();
   })();
+  // ---------- Anonymous first-open counter (GoatCounter) ----------
+  // Counts each device once, on its first open: a small marker is kept on the device after a
+  // successful count. Only on the real site, so previews and local testing never inflate the
+  // numbers, and not for people who send Do Not Track or Global Privacy Control.
+  const COUNT_HOST = 'kostas564.github.io', COUNT_URL = 'https://flipbookmind.goatcounter.com/count';
+  function countFirstOpen() {
+    try {
+      if (location.hostname !== COUNT_HOST || ls.get('ic-counted', false)) return;
+      if (navigator.doNotTrack === '1' || navigator.globalPrivacyControl) return;
+      window.goatcounter = { endpoint: COUNT_URL };
+      const sc = document.createElement('script');
+      sc.async = true; sc.src = 'https://gc.zgo.at/count.js'; sc.dataset.goatcounter = COUNT_URL;
+      sc.onload = () => ls.set('ic-counted', true); // blocked or offline: try again next time
+      document.head.appendChild(sc);
+    } catch {}
+  }
+  addEventListener('load', countFirstOpen);
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }

@@ -24,7 +24,9 @@ Flipbook Mind is a free rapid-imaging practice tool inspired by William Bengston
 
 ## Privacy
 
-Your images never leave your device. They are stored in your browser (IndexedDB) and are not uploaded anywhere. The app makes no network requests to anyone else: no analytics, and the fonts are included in the app rather than loaded from a font service.
+Your images never leave your device. They are stored in your browser (IndexedDB) and are not uploaded anywhere. The fonts are included in the app rather than loaded from a font service.
+
+**Visitor counting:** the hosted app counts first-time visits anonymously with [GoatCounter](https://www.goatcounter.com/help/privacy), which sets no cookies and doesn't store IP addresses. To count each device once, the app keeps a small marker (`ic-counted`) in the browser after the first count. Nothing else is sent: no images, list items or settings. Counting only happens on the published site (kostas564.github.io), never on previews or local copies, and is skipped if the browser sends Do Not Track or Global Privacy Control. If you run your own copy, you can remove the counter by deleting the `countFirstOpen` block and the GoatCounter entries in the Content Security Policy in `index.html`.
 Browsers can clear site data, and Safari does so for sites unused for 7 days, so back up your list or install the app.
 
 ## Install / offline
@@ -48,7 +50,7 @@ This app is not medical advice and doesn’t diagnose, treat or cure anything. I
 
 **Flashing:** the app flashes images rapidly. If you have epilepsy or photosensitivity, use slow speeds and stop if you feel unwell.
 
-Provided free, as is, without warranty. You use it at your own risk. Nothing is stored on any server and no data is collected. Your images stay on your device.
+Provided free, as is, without warranty. You use it at your own risk. Your images and list stay on your device and are never uploaded. The app counts first-time visits anonymously using GoatCounter, a privacy-friendly service that sets no cookies and doesn’t store your IP address, and keeps a small marker on your device so it only counts you once.
 
 ## Licence
 
