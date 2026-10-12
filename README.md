@@ -50,7 +50,9 @@ This app is not medical advice and doesn’t diagnose, treat or cure anything. I
 
 **Flashing:** the app flashes images rapidly. If you have epilepsy or photosensitivity, use slow speeds and stop if you feel unwell.
 
-Provided free, as is, without warranty. You use it at your own risk. Your images and list stay on your device and are never uploaded. The app counts first-time visits anonymously using GoatCounter, a privacy-friendly service that sets no cookies and doesn’t store your IP address, and keeps a small marker on your device so it only counts you once.
+Provided free, as is, without warranty. You use it at your own risk. Your images and list stay on your device and are never uploaded.
+
+The first time the app is opened on a device, it sends one anonymous signal, so we can see roughly how many people it reaches. No account, no cookies, and never anything you write. (It uses GoatCounter, and keeps a small marker on your device so it only does this once.)
 
 ## Licence
 
