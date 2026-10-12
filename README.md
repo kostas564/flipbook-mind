@@ -11,6 +11,7 @@ Flipbook Mind is a free rapid-imaging practice tool inspired by William Bengston
 
 - Drag the ⠿ handle to reorder items (or focus it and use the arrow keys). Training follows this order.
 - Tap an item to add a caption, replace its image, or move it.
+- **Text card colours:** text items can be colourful gradients (the default) or plain, with a background (black, charcoal, navy, forest green or plum) and a text colour (white, cream, sky blue, mint, lavender or gold) of your choice. The palette is dark backgrounds only, with no reds, to keep flashing gentle.
 - **Back up** saves your whole list (images included) as a file; **Restore** loads it again, on this device or another.
 
 ## Flashing safety
