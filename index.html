@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' blob: data:; connect-src 'self' data:; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://gc.zgo.at; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self' blob: data: https://flipbookmind.goatcounter.com; connect-src 'self' data: https://flipbookmind.goatcounter.com; worker-src 'self'; manifest-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <meta name="theme-color" content="#07051a">
 <meta name="description" content="A free rapid-imaging practice tool inspired by William Bengston’s Image Cycling® technique. Works offline; your images never leave your device.">
@@ -335,6 +335,22 @@
 
   /* List editing */
   .grid .tile { cursor: pointer; }
+  .cardctl { margin-top: 16px; display: grid; gap: 12px; }
+  .cardrow { display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; font-size: 0.92rem; }
+  .cardrow > span { color: var(--muted); }
+  select {
+    font: inherit; color: var(--text); background: rgba(0, 0, 0, 0.25); border: 1px solid var(--border);
+    border-radius: 999px; padding: 9px 16px; outline: none; cursor: pointer;
+  }
+  select:focus-visible { border-color: var(--accent); box-shadow: 0 0 0 4px var(--accent-soft); }
+  select option { background: #140f2e; color: var(--text); }
+  .swatches { display: flex; gap: 10px; flex-wrap: wrap; }
+  button.swatch {
+    width: 34px; height: 34px; padding: 0; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.25);
+    justify-content: center; font-size: 0.8rem; font-weight: 700;
+  }
+  button.swatch:hover { transform: scale(1.08); border-color: rgba(255, 255, 255, 0.6); }
+  button.swatch[aria-pressed="true"] { border-color: #fff; box-shadow: 0 0 0 3px var(--accent); }
   .tile:focus-visible, button:focus-visible, .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   .tile .cap {
     position: absolute; left: 0; right: 0; bottom: 0; padding: 20px 8px 24px; font-size: 0.72rem; line-height: 1.25;
@@ -421,6 +437,18 @@
       <input id="fileIn" type="file" accept="image/*" multiple>
       <input id="textIn" type="text" placeholder="…or type a goal (e.g. “Visit Japan”)" maxlength="60" aria-label="Goal text">
       <button id="addText">Add</button>
+    </div>
+    <div id="cardCtl" class="cardctl" hidden>
+      <label class="cardrow" for="cardStyle"><span>Text card colours</span>
+        <select id="cardStyle">
+          <option value="colourful">Colourful</option>
+          <option value="plain">Choose colours</option>
+        </select>
+      </label>
+      <div id="cardPlain" hidden>
+        <div class="cardrow"><span id="swBgLbl">Background</span><div id="swBg" class="swatches" role="group" aria-labelledby="swBgLbl"></div></div>
+        <div class="cardrow"><span id="swFgLbl">Text</span><div id="swFg" class="swatches" role="group" aria-labelledby="swFgLbl"></div></div>
+      </div>
     </div>
     <div id="grid" class="grid"></div>
     <div id="empty" class="empty">No items yet. Add images of your goals, or type them as text.</div>
@@ -536,7 +564,8 @@
     <p>This is a personal, unofficial project. It isn’t affiliated with or endorsed by William Bengston, Bengston Research or L&nbsp;&amp;&nbsp;B Consulting, Inc. “Image Cycling” and “The Bengston Energy Healing Method” are registered trademarks of L&nbsp;&amp;&nbsp;B Consulting, Inc.</p>
     <p>This app is not medical advice and doesn’t diagnose, treat or cure anything. If you have a health concern, see a doctor.</p>
     <p><b>Flashing:</b> the app flashes images rapidly. If you have epilepsy or photosensitivity, use slow speeds and stop if you feel unwell.</p>
-    <p>Provided free, as is, without warranty. You use it at your own risk. Nothing is stored on any server and no data is collected. Your images stay on your device.</p>
+    <p>Provided free, as is, without warranty. You use it at your own risk. Your images and list stay on your device and are never uploaded.</p>
+    <p>The first time the app is opened on a device, it sends one anonymous signal, so we can see roughly how many people it reaches. No account, no cookies, and never anything you write. (It uses GoatCounter, and keeps a small marker on your device so it only does this once.)</p>
   </footer>
 </div>
 
@@ -621,6 +650,10 @@
 <script>
 (() => {
   const $ = id => document.getElementById(id);
+  // Plain text-card colours: dark backgrounds and light text only, no reds, in keeping with the
+  // flashing-safety rules (a bright or red background would flash harder).
+  const CARD_BG = { black: ['Black', '#000000'], charcoal: ['Charcoal', '#1f1f23'], navy: ['Navy', '#0b1f3a'], forest: ['Forest green', '#0f2e1d'], plum: ['Plum', '#2a1238'] };
+  const CARD_FG = { white: ['White', '#ffffff'], cream: ['Cream', '#f6ecd2'], sky: ['Sky blue', '#9fd3ff'], mint: ['Mint', '#9df0c6'], lavender: ['Lavender', '#cdb8ff'], gold: ['Gold', '#ffd166'] };
   const GRADIENTS = [
     ['#6d4aff','#c86bff'], ['#0891b2','#67e8f9'], ['#12b886','#38d9a9'],
     ['#228be6','#66d9e8'], ['#9333ea','#e9a8f5'], ['#f59f00','#ffd43b'],
@@ -709,7 +742,7 @@
   let items = [];
   const urls = new Map();
   const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const DEFAULTS = { speed: reduceMotion ? 1000 : 500, dur: 3, shuffle: false, xfade: true, caps: false, chime: true, fs: false, fast: false, pace: 1000, tdur: 2, vol: 50, mode: 'cycle' };
+  const DEFAULTS = { speed: reduceMotion ? 1000 : 500, dur: 3, shuffle: false, xfade: true, cards: 'colourful', cardBg: 'black', cardFg: 'white', caps: false, chime: true, fs: false, fast: false, pace: 1000, tdur: 2, vol: 50, mode: 'cycle' };
   const settings = Object.assign({}, DEFAULTS, ls.get('ic-settings', {}));
   // Shuffle used to be on by default and every install saved that. Images now play in list order
   // unless shuffle is chosen, so switch it off once for existing installs.
@@ -724,6 +757,13 @@
     settings.pace = Math.min(2500, Math.max(L.pace, +settings.pace || DEFAULTS.pace));
   }
   clampSpeeds();
+  // Settings can come from a backup file, so only known palette names are ever used.
+  function sanitizeCards() {
+    if (settings.cards !== 'plain') settings.cards = 'colourful';
+    if (!Object.hasOwn(CARD_BG, settings.cardBg)) settings.cardBg = 'black';
+    if (!Object.hasOwn(CARD_FG, settings.cardFg)) settings.cardFg = 'white';
+  }
+  sanitizeCards();
   const stats = Object.assign({ total: 0, streak: 0, last: null }, ls.get('ic-stats', {}));
   let trained = ls.get('ic-trained', {});
 
@@ -734,6 +774,10 @@
     return urls.get(it.id);
   };
   const dropUrl = id => { if (urls.has(id)) { URL.revokeObjectURL(urls.get(id)); urls.delete(id); } };
+  // How a text card looks right now: a colourful gradient, or the chosen plain colours.
+  const cardLook = it => settings.cards === 'plain'
+    ? { plain: true, bg: CARD_BG[settings.cardBg][1], fg: CARD_FG[settings.cardFg][1] }
+    : { plain: false, gradient: gradient(it) };
   const gradient = it => {
     const [a, b] = GRADIENTS[(it.color || 0) % GRADIENTS.length];
     return `linear-gradient(135deg, ${a}, ${b})`;
@@ -752,7 +796,11 @@
         tile.appendChild(cap);
       }
     } else {
-      tile.style.background = gradient(it);
+      const look = cardLook(it);
+      if (look.plain) {
+        tile.style.background = look.bg; tile.style.color = look.fg;
+        tile.style.boxShadow = 'inset 0 0 0 1px rgba(255, 255, 255, 0.22), 0 6px 18px rgba(0, 0, 0, 0.35)';
+      } else tile.style.background = look.gradient;
       tile.textContent = it.text;
     }
     return tile;
@@ -828,6 +876,7 @@
     c.classList.toggle('ok', n >= 20);
     $('startBtn').disabled = n < 2;
     $('exportBtn').hidden = n === 0;
+    $('cardCtl').hidden = !items.some(it => !it.blob); // only when there are text items to colour
     renderLevels();
     renderStoreTip();
   }
@@ -1165,6 +1214,18 @@
       $(k).checked = settings[k];
       $(k).onchange = e => { settings[k] = e.target.checked; upd(); };
     }
+    sanitizeCards();
+    $('cardStyle').value = settings.cards;
+    $('cardPlain').hidden = settings.cards !== 'plain';
+    $('cardStyle').onchange = e => { settings.cards = e.target.value; ls.set('ic-settings', settings); bindSettings(); render(); };
+    const swatches = (box, palette, key) => box.replaceChildren(...Object.entries(palette).map(([name, [label, css]]) => {
+      const b = document.createElement('button');
+      b.type = 'button'; b.className = 'swatch'; b.style.background = css; b.title = label; b.setAttribute('aria-label', label);
+      b.setAttribute('aria-pressed', settings[key] === name);
+      b.onclick = () => { settings[key] = name; ls.set('ic-settings', settings); bindSettings(); render(); };
+      return b;
+    }));
+    swatches($('swBg'), CARD_BG, 'cardBg'); swatches($('swFg'), CARD_FG, 'cardFg');
     $('fast').checked = settings.fast;
     $('fast').disabled = reduceMotion;
     $('fast').onchange = async e => {
@@ -1381,16 +1442,20 @@
   }
   function textFrame(it, px) {
     const c = blankFrame(px), g = c.getContext('2d'), k = px / cssFrame();
-    const [c1, c2] = GRADIENTS[(it.color || 0) % GRADIENTS.length];
-    const grad = g.createLinearGradient(0, 0, px, px);
-    grad.addColorStop(0, c1); grad.addColorStop(1, c2);
-    g.fillStyle = grad;
+    const look = cardLook(it);
+    if (look.plain) g.fillStyle = look.bg;
+    else {
+      const [c1, c2] = GRADIENTS[(it.color || 0) % GRADIENTS.length];
+      const grad = g.createLinearGradient(0, 0, px, px);
+      grad.addColorStop(0, c1); grad.addColorStop(1, c2);
+      g.fillStyle = grad;
+    }
     g.beginPath();
     if (g.roundRect) g.roundRect(0, 0, px, px, 32 * k); else g.rect(0, 0, px, px);
     g.fill();
     const size = Math.min(51.2, Math.max(24, innerWidth * 0.05)) * k, pad = 24 * k;
     g.font = `600 ${size}px "Fraunces Variable", Fraunces, Georgia, serif`;
-    g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.fillStyle = look.plain ? look.fg : '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
     const lines = wrapLines(g, it.text || "", px - pad * 2), lh = size * 1.55;
     lines.forEach((l, i) => g.fillText(l, px / 2, px / 2 + (i - (lines.length - 1) / 2) * lh));
     return c;
@@ -1412,7 +1477,7 @@
     return c;
   }
   async function frameFor(it, px) {
-    const key = it.blob ? it.blob : `${it.text}|${it.color}|${innerWidth}`;
+    const key = it.blob ? it.blob : `${it.text}|${it.color}|${innerWidth}|${settings.cards}|${settings.cardBg}|${settings.cardFg}`;
     const f = frames.get(it.id);
     if (f && f.px === px && f.key === key) return f.el;
     const el = it.blob ? await photoFrame(it, px) : textFrame(it, px);
@@ -1779,6 +1844,23 @@
     render();
     if (items.length) keepStorage();
   })();
+  // ---------- Anonymous first-open counter (GoatCounter) ----------
+  // Counts each device once, on its first open: a small marker is kept on the device after a
+  // successful count. Only on the real site, so previews and local testing never inflate the
+  // numbers, and not for people who send Do Not Track or Global Privacy Control.
+  const COUNT_HOST = 'kostas564.github.io', COUNT_URL = 'https://flipbookmind.goatcounter.com/count';
+  function countFirstOpen() {
+    try {
+      if (location.hostname !== COUNT_HOST || ls.get('ic-counted', false)) return;
+      if (navigator.doNotTrack === '1' || navigator.globalPrivacyControl) return;
+      window.goatcounter = { endpoint: COUNT_URL };
+      const sc = document.createElement('script');
+      sc.async = true; sc.src = 'https://gc.zgo.at/count.js'; sc.dataset.goatcounter = COUNT_URL;
+      sc.onload = () => ls.set('ic-counted', true); // blocked or offline: try again next time
+      document.head.appendChild(sc);
+    } catch {}
+  }
+  addEventListener('load', countFirstOpen);
   if ('serviceWorker' in navigator && location.protocol.startsWith('http')) {
     addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }
